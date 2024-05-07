@@ -61,7 +61,7 @@ In practice, the creation of PSUs with its respective SSUs and TSU, can be summa
 
 -   **Generate SSUs**: Each PSU is divided into cells of 100 m x 100 m and 7 cells are randomly selected. Four of them are selected as target SSUs and 3 are saved as alternative SSUs within the PSU.
 
--   **Generate TSUs**: One target and three alternative TSU points are randomly allocated within each SSU. Each TSU represents the central point of a sampling site. However, the full sample consists in a composite of four points within a 'Y' shaped schema, with the bottom pointing to the north, and a distance of 4 meters from the central point to the outer marks in the shape.
+-   **Generate TSUs**: One target and three alternative TSU points are randomly allocated within each SSU. Each TSU represents the central point of a sampling site. However, the full sample consists in a composite of four points within a 'Y' shaped schema, with the bottom pointing to the north, and a distance of 2 meters from the central point to the outer marks in the shape.
 
 # Guidelines for the implementation of the sampling design in R
 
