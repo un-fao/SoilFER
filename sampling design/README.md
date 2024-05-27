@@ -16,3 +16,5 @@ Landuse layer is composed of a single raster delineating the location of "Coffee
 Note that the three raster files (coffee_2018.tif, covariates_HND.tif and newhall.tif) must be stored in the '/data/raster' folder or change the correspoinding path in the R script.  
 
 The R code is in both 'R' and 'Rmd' files within the '/scripts' folder.
+
+All the results form the script will be stored in the '/data/results' folder.
