@@ -1,3 +1,5 @@
+# Script to create a sampling design in crop areas for Honduras
+
 ## 1 - Set environment and load libraries ===========================
 
   # Set working directory to source file location
@@ -8,9 +10,9 @@
     #install.packages("remotes") # Install remotes if not installed
     #remotes::install_github("lemuscanovas/synoptReg")
     
-  # List of packages
+    # List of packages
     packages <- c("sp","terra","raster","sf", "sgsR","entropy", "tripack","tibble",
-                  "manipulate","dplyr","synoptReg", "doSNOW","Rfast","fields", "ggplot2")
+                  "manipulate","dplyr","synoptReg", "doSNOW","Rfast","fields", "ggplot2", "sgsR")
   
   # Load packages
     invisible(lapply(packages, library, character.only = TRUE))
@@ -87,6 +89,7 @@
             break
           }
         }
+      print(paste0(s," out of ",nstarts))
       }
       list(centers = centers_best, clusters = clusters_best)
     }
@@ -95,6 +98,7 @@
 
   # Load and transform the country boundaries
     country_boundaries <- sf::st_read(file.path(paste0(shp.path,"HND.shp")), quiet=TRUE)
+    st_crs(country_boundaries) <- "EPSG:4326"
     country_boundaries <- country_boundaries %>%
       st_as_sf() %>% sf::st_transform(crs=epsg)
   
@@ -142,14 +146,21 @@
 
 ## 6 - Load Sampling Universe ===========================
 
-  # Load land use data
-    lu <- rast(paste0(raster.path,"coffee_2018.tif"))
+  # Load land use data. We use 2 landuse Spatraster objects
+    # A First one at 10 meter resolution to define the landuse area (crops) and a Second one at 1 ha resolution to select PSUs (lu)
+    #lu <- rast(paste0(raster.path,"coffee_2018.tif"))
+    crops <- rast(paste0(raster.path,"Mapa_cobertura.tif")) # 10 meter pixel resolution
+    names(crops) <- "lu"
+    crops <- subst(crops, "Bosque", NA)
+    crops <- as.numeric(crops)
+    crops <- subst(crops, 0, NA)
+    crops <- crops/crops  # Ensures that raster land use has values 1 and NA
+    # Aggregate to 1 ha pixel size
+    lu <- aggregate(crops,10, fun=modal, cores=4, na.rm=T) # 100 meter pixel resolution
     names(lu) <- "lu"
-  
-  # Aggregate to 1 ha pixel size
-    lu <- aggregate(lu,10, fun=max, cores=4, na.rm=T)
-    lu <- lu/lu  # Ensures that raster has values 1 and NA
+    plot(lu)
     
+
 ## 7 - Generate PSUs ===========================
 
   # Generate 2x2 km PSU vector grid within the country boundaries
@@ -158,38 +169,36 @@
     psu_grid$ID <- 1:nrow(psu_grid)
     
   # Trim PSU grid by country boundary
-    # psu_grid <- psu_grid[country_boundaries[1],] # This process is highly time consuming
-    # write_sf(psu_grid,paste0(results.path,"/grid2k.shp")) # Save grid for further analyses
+     psu_grid <- psu_grid[country_boundaries[1],] # This process is highly time consuming
+     write_sf(psu_grid,paste0(results.path,"/grid2k.shp")) # Save grid for further analyses
+     # Load psu vector grid (saved from previous analyses to save time)
+     # If you already did the saved the process, uncomment and use the following line instead of those above
+     # psu_grid <- sf::st_read(file.path(paste0(results.path,"/grid2k.shp"))) 
+     
 
 ## 8 - Select PSUs with crops above a certain percent ===========================
 
-  # Load psu vector grid (saved from previous analyses to save time)
-  # If you did the process before, comment next line 
-    psu_grid <- sf::st_read(file.path(paste0(other.path,"/grid2k.shp"))) 
-    
+
     # Extract values of lu for cells that intersect with psu_grid
     extracted_values <- terra::extract(lu, psu_grid)
     # Summarize by grid ID and calculate percent according to the 1 ha reclassification of LU (400 pixels in 2x2 km)
     crop_perc <- extracted_values %>%
       group_by(ID) %>%
       summarize(crop_perc = sum(lu, na.rm = TRUE)*100/400)
- 
-      # Join the result back to the psu_grid polygon data
+    # Remove temporary object
+    rm(extracted_values)
+    
+    # Join the result back to the psu_grid polygon data
       psu_grid$crop_perc <- crop_perc$crop_perc
-      plot(psu_grid["crop_perc"], col=rainbow(100),border = NA)
-      write_sf(psu_grid, file.path(paste0(results.path,"/psu_grid_counts.shp"))) 
-      
-      # Remove temporary object
-      rm(extracted_values)
-   
+      write_sf(psu_grid, file.path(paste0(results.path,"/psu_grid_counts.shp")), overwrite=TRUE)
+
     # Plot the polygons with scaled colors based on crop percentage
     ggplot() +
       geom_sf(data = psu_grid, aes(fill = crop_perc)) +
       scale_fill_distiller(palette = "Spectral") +
       theme_minimal()
     
-    # Subset PSUs with a minimal area of crops
-      # Since we need 4 target and 3 replacement SSus at each PSU, the crop area in the PSU must have at least 7 has (pixels in aggregated lu layer)
+    # Subset PSUs with a minimal area of crops (defined above as "percent_crop")
     psu_grid <- psu_grid[psu_grid$crop_perc > percent_crop,"ID"]
   
   # Rasterize PSU vector grid
@@ -199,26 +208,6 @@
 
 ## 9 - Rasterize PSUs ===========================
 
-  # Using the same resolution and extent as the original raster
-    #poly_raster <- rasterize(psu_grid, lu, field="ID", fun="max")  # Assuming 'ID' is a placeholder field
-  
-  # # Identify PSUs overlying raster cells within the selected crop
-  #   #overlay_result <- mask(poly_raster,lu, maskvalue=NA)
-  #   
-  # 
-  # # Extract unique PSU IDs within crops (assuming 'ID' is the identifier field in your polygon data)
-  #   unique_ids <- unique(values(overlay_result)[, "ID"])
-  # 
-  # # Select PSU Universe (PSUs overlaying coffee cells)
-  #   psu_grid <- psu_grid[psu_grid$ID %in% unique_ids, ]
-  # 
-  # Subset legacy data to the area of crops
-    legacy <- st_filter(legacy,psu_grid)
-  
-  # Plot target area
-    # plot(lu)
-    # plot(psu_grid, add=TRUE, col='red')
-    
   # Crop covariates to the sampling universe
     cov.dat <- crop(cov.dat, psu_grid, mask=TRUE, overwrite=TRUE)
   
@@ -234,69 +223,74 @@
   # Get covariate names
     covs <- names(cov.dat)
   
+  # Prepare legacy data
+  # Subset legacy data to the area of crops
+    legacy <- st_filter(legacy,psu_grid)
   # Get the soil legacy coordinates that serve to define fixed cluster centers
     legacy_df <- st_coordinates(legacy)
   
-  # Initialize a vector to store the indices of the closest points from legacy data to the dataframe of covariates 'PSU.df' 
+    # Initialize a vector to store the indices of the closest points from legacy data to the dataframe of covariates 'PSU.df' 
     units <- numeric(nrow(legacy_df))
-  
-  # Loop through each point in 'legacy' to determine the minimum distance between covariates and  legacy points
+    
+    # Loop through each point in 'legacy' to determine the minimum distance between covariates and  legacy points
     for (i in 1:nrow(legacy_df)) {
       # Calculate distances from the current 'legacy' point to all points in the PSUs
       distances <- sqrt((PSU.df$x - legacy_df[i, "X"])^2 + (PSU.df$y - legacy_df[i, "Y"])^2)
       # Find the index of the minimum distance to identify the PSU for the legacy point
       units[i] <- which.min(distances)
     }
-  
-  # Select scaled information at legacy points
-    fixed <- data.frame(units, scale(PSU.df[, covs])[units, ]) 
-  
-  # Create dataframe of scaled covariates at the resolution of the PSUs (2x2km)
+    
+    # Select scaled information at legacy points
+    fixed <- unique(data.frame(units, scale(PSU.df[, covs])[units, ])) 
+    
+    # Create dataframe of scaled covariates at the resolution of the PSUs (2x2km)
     mygrd <- data.frame(scale(PSU.df[, covs])) 
-  
-  ## Compute optimal sampling PSUs considering legacy data
+    
+    ## Compute optimal sampling PSUs considering legacy data
     res <- CSIS(fixed = fixed, nsup = n.psu, nstarts = iterations, mygrd = mygrd)
-  
-  # Transfer the results to the dataframe of PSUs to identify the cluster for each grid
+    
+    # Transfer the results to the dataframe of PSUs to identify the cluster for each grid
     PSU.df$cluster <- res$clusters
-  
-  ## Calculate the distance of the centers to the scaled covariate space
+    
+    ## Calculate the distance of the centers to the scaled covariate space
     D <- rdist(x1 = res$centers, x2 = scale(PSU.df[, covs]))
     units <- apply(D, MARGIN = 1, FUN = which.min)
-  
-  ## Calculate the MSSSD for the selected trial
+    
+    ## Calculate the MSSSD for the selected trial
     dmin <- apply(D, MARGIN = 2, min)
     MSSSD <- mean(dmin^2)
-  
-  # Subset the selected PSU from all PSU in the country
+    
+    # Subset the selected PSU from all PSU in the country
     myCSCsample <- PSU.df[units, c("x", "y", covs)]
-  
-  # Identify type of PSU
+    
+    # Identify type of PSU
     myCSCsample$type <- c(rep("legacy", nrow(fixed)), rep("new", length(units)-nrow(fixed)))
-  
-  # Convert to spatial objet
+    
+    # Convert to spatial objet
     myCSCsample <-  myCSCsample %>%
       st_as_sf(coords = c("x", "y"), crs = epsg) 
-  
-  # Subset legacy and infill PSUs
+    
+    # Subset legacy and infill PSUs
     legacy <-  myCSCsample[myCSCsample$type=="legacy",] 
     new <-  myCSCsample[myCSCsample$type=="new",] 
-  
-  # Intersect the PSU grid with the infill data to get the target PSU ids
+    
+    # Intersect the PSU grid with the infill data to get the target PSU ids
     PSUs <- sf::st_intersection(psu_grid, new) %>% select(ID)
-  
-  # Subset target PSUs
+    
+    # Subset target PSUs
     target.PSUs <- psu_grid[psu_grid$ID %in% PSUs$ID,] %>% select(ID)
-  
-  # Plot of target PSUs
+    
+    # Plot of target PSUs
     plot(PSU.r$PC1)
     plot(target.PSUs, col="red", add=TRUE)
     plot(new[1], col="green", pch=19, cex=0.5, add=TRUE)
     plot(legacy[1], col="blue", pch=19, cex=0.5, add=TRUE)
-
-## 11 - Plot PSUs over covariate PC1 and PC2 information ===========================
-
-  #  PSUs environmental representation over PC1 and PC2 of covariates
+    
+    rm(new,dmin,MSSSD)
+    
+    ## 11 - Plot PSUs over covariate PC1 and PC2 information ===========================
+    
+    #  PSUs environmental representation over PC1 and PC2 of covariates
     ggplot(PSU.df) +
       geom_point(mapping = aes(x = PC1, y = PC2, colour = as.character(cluster)), alpha = 0.5) +
       scale_colour_viridis_d() +
@@ -305,57 +299,61 @@
       scale_y_continuous(name = "PC2") +
       theme(legend.position = "none") +
       ggtitle("Distribution of sampling PSUs over the space of environmental covariates") 
-
-
-## 12 - Function to create SSUs and TSUs ===========================
-
-  # Function to generate 3 TSU points within an SSU, including naming
-    generate_tsu_points_within_ssu <- function(ssu, num_tsus, ssu_id, psu_id, ssu_type) {
-      bbox <- st_bbox(ssu)
-      tsu_points <- vector("list", num_tsus)
+    
+    ## 12 - Function to create SSUs and TSUs ===========================
+    
+    generate_tsu_points_within_ssu <- function(ssu, number_TSUs, index, ssu_type, crops) {
+      # Convert SSU to SpatVector for masking
+      ssu_vect <- ssu_grid_sf[index, ]
       
-      for (i in 1:num_tsus) {
-        random_x <- runif(1, bbox$xmin, bbox$xmax)
-        random_y <- runif(1, bbox$ymin, bbox$ymax)
-        tsu_name <- paste("PSU", psu_id, "_", ssu_type, "_SSU", ssu_id, "_TSU", i, sep="")
-        tsu_point <- st_point(c(random_x, random_y))
-        tsu_points[[i]] <- st_sf(tibble(TSU_Name = tsu_name, TSU_ID = i, SSU_ID = ssu_id, PSU_ID = psu_id, SSU_Type = ssu_type), 
-                                 geometry = st_sfc(tsu_point), crs = st_crs(ssu))
-      }
+      # Clip the spatRaster to the SSU to focus the sampling within the SSU boundaries
+      clipped_lu <- crop(crops, ssu_vect)
       
-      tsus_sf <- do.call(rbind, tsu_points)
-      return(tsus_sf)
+      # Generate random points within the clipped spatRaster using sample_srs
+      sampled_points <- sample_srs(clipped_lu, nSamp = number_TSUs)  # Ensure this is compatible or modify
+      
+      # Add metadata to the sampled points
+      sampled_points$PSU_ID <- selected_psu$ID
+      sampled_points$SSU_ID <- index
+      sampled_points$TSU_ID <- seq_len(nrow(sampled_points))
+      sampled_points$SSU_Type <- ssu_type
+      sampled_points$TSU_Name <- paste0(sampled_points$PSU_ID,".",sampled_points$SSU_ID,".",seq_len(nrow(sampled_points)))
+      
+      return(sampled_points)
     }
-
-## 13 - Compute SSUs and TSUs ===========================
-
-  # Initialize a list to store TSUs for all PSUs
+    
+    ## 13 - Compute SSUs and TSUs ===========================
+    
+    # Initialize a list to store TSUs for all PSUs
     all_psus_tsus <- list()
-  # Initialize a list to store target SSUS
+    # Initialize a list to store target SSUS
     selected_ssus <- list()
-  
+    
     for (psu_id in 1:nrow(target.PSUs)) {
       selected_psu <- target.PSUs[psu_id, ]
-    
-      # Generate SSUs within the selected PSU
-        ssu_grid <- st_make_grid(selected_psu, cellsize = c(ssu_size, ssu_size), square = TRUE)
-        ssu_grid_sf <- st_sf(geometry = ssu_grid)
-              
-      # Convert ssu_grid_sf to SpatVector
-        ssu_grid_vect <- vect(ssu_grid_sf)
-            
-      # Extract values of lu for cells that intersect with ssu_grid_vect
-        extracted_values <- extract(lu, ssu_grid_vect)
       
-        # Add lu code to the SSUs        
-        ssu_grid_sf$lu <- extracted_values$lu
-              
-        # Subset ssu_grid_sf to get only the grid squares within lu
-        ssu_grid_sf <- ssu_grid_sf[!is.na(ssu_grid_sf$lu), ]
-            
-        # Count SSUs
-        total_ssus <- nrow(ssu_grid_sf)
-    
+      # Generate SSUs within the selected PSU
+      ssu_grid <- st_make_grid(selected_psu, cellsize = c(ssu_size, ssu_size), square = TRUE)
+      ssu_grid_sf <- st_sf(geometry = ssu_grid)
+      
+      # Convert ssu_grid_sf to SpatVector
+      ssu_grid_vect <- vect(ssu_grid_sf)
+      
+      # Extract values of lu for cells that intersect with ssu_grid_vect
+      extracted_values <- extract(crops, ssu_grid_vect, fun=table)
+      
+      # Add lu code to the SSUs        
+      ssu_grid_sf$lu <- extracted_values[,2]
+      
+      # Subset ssu_grid_sf to get only the grid squares within lu
+      ssu_grid_sf <- ssu_grid_sf[!is.na(ssu_grid_sf$lu), ]
+      ssu_grid_sf <- ssu_grid_sf[ssu_grid_sf$lu>0, ]
+      #plot(ssu_grid_sf)
+      print(paste(psu_id, " out of ", nrow(target.PSUs)))
+      
+      # Count SSUs
+      total_ssus <- nrow(ssu_grid_sf)
+      
       if(total_ssus >= (num_primary_ssus + num_alternative_ssus)) {
         primary_ssus_indices <- sample(1:total_ssus, num_primary_ssus, replace = FALSE)
         available_for_alternatives <- setdiff(1:total_ssus, primary_ssus_indices)
@@ -363,14 +361,13 @@
         
         selected_ssus[[psu_id]] <- rbind(ssu_grid_sf[primary_ssus_indices, ], ssu_grid_sf[alternative_ssus_indices, ])
         
-        # Generate TSUs for primary SSUs with naming
         primary_tsus <- lapply(primary_ssus_indices, function(index) {
-          generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, psu_id, "Target")
+          generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Target",crops)
         })
         
         # Generate TSUs for alternative SSUs with naming
         alternative_tsus <- lapply(alternative_ssus_indices, function(index) {
-          generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, psu_id, "Alternative")
+          generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
         })
         
         # Combine all TSUs of the current PSU into one sf object
@@ -380,69 +377,76 @@
       }
     }
     
-  # Combine TSUs from all PSUs into one sf object
+    # Combine TSUs from all PSUs into one sf object
     all_tsus <- do.call(rbind, all_psus_tsus)
     all_tsus$TSU_Type <- "Target"
     all_tsus[all_tsus$TSU_ID >1,"TSU_Type"] <- "Alternative"
     all_tsus$PSU_Type <- "Target"
     all_tsus <- all_tsus %>%
       dplyr::select("TSU_Name","PSU_ID","SSU_ID","TSU_ID","PSU_Type","SSU_Type","TSU_Type","geometry")
-
-## 14 - View TSUs ===========================
-
-  # Plot first PSU with target and alternative SSUs
+    
+    ## 14 - View TSUs ===========================
+    
+    # Plot first PSU with target and alternative SSUs
+    
     plot(selected_psu[1], col=NA, reset=FALSE, main="PSU")
     plot(ssu_grid_sf[primary_ssus_indices, ], col="blue", add=TRUE)
     plot(ssu_grid_sf[alternative_ssus_indices, ], col="red", add=TRUE)
     plot(all_tsus[1], col="green", pch=19, cex=0.5, add=TRUE)
     legend("bottomleft", 
            c("Target SSU", "Alternative SSU", "TSUs"), fill=c("blue", "red",  0), border=c("black","black",NA), horiz=F, cex=0.8, pch = c(NA,NA,3), col=c(NA,NA,"green"))
-
-## 15 - Write PSUs and TSUs ===========================
-  # Convert clusters to raster
+    
+    ## 15 - Write PSUs and TSUs ===========================
+    # Convert clusters to raster
     dfr <- PSU.df[,c("x","y","cluster")]
     dfr$cluster <- as.numeric(dfr$cluster)    
     dfr <- rasterFromXYZ(dfr)
     crs(dfr) = paste0("epsg:",epsg) # Define the CRS
-  
-  # Extract cluster ID for the target PSUS
+    
+    # Extract cluster ID for the target PSUS
     PSU_cluster.id <- unlist(extract(dfr, target.PSUs))
-  
+    
     valid.PSU_clusters <-
       target.PSUs %>% mutate(
         cluster = extract(dfr, target.PSUs, fun = mean, na.rm = TRUE)
       )
-  
+    
     all.PSU_clusters <-
       psu_grid %>% mutate(
         cluster = extract(dfr, psu_grid, fun = mean, na.rm = TRUE)
       )
-  
-  # Write target PSUs to disk
-    write_sf(all.PSU_clusters,paste0(results.path,"/PSU_pattern_cl.shp"))
-    write_sf(valid.PSU_clusters,paste0(results.path,"/PSUs_target.shp"))
-  
-  # Export PST areas and TSU points
-    write_sf(all_tsus,paste0(results.path,"/TSUs_target.shp")) # Export TSUs
-  
-  # Write clusters to tiff
-   writeRaster(dfr, paste0(results.path,"/clusters.tif"), overwrite=TRUE)
+    
+    # Add cluster information to the TSUS
+    valid.PSU_clusters <- valid.PSU_clusters %>%
+      rename(Replace_ID= cluster) %>%
+      select(!ID)
+    
+    all_tsus <- st_join(all_tsus, valid.PSU_clusters)
 
-
-## 16 -Calculate alternative PSUs ===========================
-
-  # Calculate replacement PSUs
-  # Step 1: Exclude elements present in valid.PSU_clusters from all.PSU_clusters
+    
+    # Export target PSU and TSU points
+    write_sf(valid.PSU_clusters,paste0(results.path,"/PSUs_target.shp"), overwrite=TRUE)
+    write_sf(all_tsus,paste0(results.path,"/TSUs_target.shp"), overwrite=TRUE) # Export TSUs
+    
+    # Write clusters to tiff
+    write_sf(all.PSU_clusters,paste0(results.path,"/PSU_pattern_cl.shp"), overwrite=TRUE)
+    writeRaster(dfr, paste0(results.path,"/clusters.tif"), overwrite=TRUE)
+    
+    
+    ## 16 -Calculate alternative PSUs ===========================
+    
+    # Calculate replacement PSUs
+    # Step 1: Exclude elements present in valid.PSU_clusters from all.PSU_clusters
     remaining.PSU_clusters <- all.PSU_clusters %>%
       filter(!(ID %in% valid.PSU_clusters$ID))
-  
-  # Step 2: Get unique clustMin values from valid.PSU_clusters
+    
+    # Step 2: Get unique clustMin values from valid.PSU_clusters
     unique_cluster <- distinct(valid.PSU_clusters, cluster)$cluster
-  
-  # Initialize a vector to store indices of sampled replacements
+    
+    # Initialize a vector to store indices of sampled replacements
     sampled_indices <- integer(0)
-  
-  # Loop through each unique clustMin to find a replacement
+    
+    # Loop through each unique clustMin to find a replacement
     for (clust in unique_cluster) {
       candidates_indices <- which(remaining.PSU_clusters$cluster == clust)
       
@@ -451,21 +455,21 @@
         sampled_indices <- c(sampled_indices, sampled_index)
       }
     }
-  
-  # Use the collected indices to slice the replacements from remaining.PSU_clusters
-  # replacements contains a replacement for each unique cluster in valid.PSU_clusters
+    
+    # Use the collected indices to slice the replacements from remaining.PSU_clusters
+    # replacements contains a replacement for each unique cluster in valid.PSU_clusters
     replacements <- remaining.PSU_clusters[sampled_indices, ]
-
-## 17 -  Determine SSUs and TSUs for alternative PSUs=============================
-
-  # Initialize a list to store TSUs for all PSUs
+    
+    ## 17 -  Determine SSUs and TSUs for alternative PSUs=============================
+    
+    # Initialize a list to store TSUs for all PSUs
     alt_psus_tsus_sf <- list()
     selected_ssus_sf <- list()
-  
+    
     for (psu_id in 1:nrow(replacements)) {
       selected_psu <- replacements[psu_id, ]
-    
-    # Generate SSUs within the selected PSU
+      
+      # Generate SSUs within the selected PSU
       ssu_grid <- st_make_grid(selected_psu, cellsize = c(ssu_size, ssu_size), square = TRUE)
       ssu_grid_sf <- st_sf(geometry = ssu_grid)
       
@@ -473,42 +477,44 @@
       ssu_grid_vect <- vect(ssu_grid_sf)
       
       # Extract values of lu for cells that intersect with ssu_grid_vect
-      extracted_values <- extract(lu, ssu_grid_vect)
+      extracted_values <- extract(crops, ssu_grid_vect, fun=table)
       
       # Add lu code to the SSUs        
-      ssu_grid_sf$lu <- extracted_values$lu
+      ssu_grid_sf$lu <- extracted_values[,2]
       
       # Subset ssu_grid_sf to get only the grid squares within lu
       ssu_grid_sf <- ssu_grid_sf[!is.na(ssu_grid_sf$lu), ]
+      ssu_grid_sf <- ssu_grid_sf[ssu_grid_sf$lu>0, ]
+      #plot(ssu_grid_sf)
+      print(paste(psu_id, " out of ", nrow(replacements)))
       
       # Count SSUs
       total_ssus <- nrow(ssu_grid_sf)
-
+      
       if(total_ssus >= (num_primary_ssus + num_alternative_ssus)) {
         primary_ssus_indices <- sample(1:total_ssus, num_primary_ssus, replace = FALSE)
         available_for_alternatives <- setdiff(1:total_ssus, primary_ssus_indices)
         alternative_ssus_indices <- sample(available_for_alternatives, num_alternative_ssus, replace = FALSE)
-      
-       selected_ssus_sf[[psu_id]] <- rbind(ssu_grid_sf[primary_ssus_indices, ], ssu_grid_sf[alternative_ssus_indices, ])
-      
-      # Generate TSUs for target SSUs with naming
+        
+        selected_ssus_sf[[psu_id]] <- rbind(ssu_grid_sf[primary_ssus_indices, ], ssu_grid_sf[alternative_ssus_indices, ])
+        
+        # Generate replacement TSUs for SSUs with naming
         primary_tsus <- lapply(primary_ssus_indices, function(index) {
-          generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, psu_id, "Target")
+          generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
         })
-      
-      # Generate TSUs for alternative SSUs with naming
+        # Generate TSUs for alternative SSUs with naming
         alternative_tsus <- lapply(alternative_ssus_indices, function(index) {
-          generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, psu_id, "Alternative")
+          generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
         })
-      
-      # Combine all TSUs of the current PSU into one sf object
+        
+        # Combine all TSUs of the current PSU into one sf object
         alt_psus_tsus_sf[[psu_id]] <- do.call(rbind, c(primary_tsus, alternative_tsus))
       } else {
         warning(paste("PSU", psu_id, "does not have enough SSUs for selection. Skipping."))
       }
     }
-
-  # Combine TSUs from all PSUs into one sf object
+    
+    # Combine TSUs from all PSUs into one sf object
     alt_tsus_combined_sf <- do.call(rbind, alt_psus_tsus_sf)
     alt_tsus_combined_sf$TSU_Type <- "Target"
     alt_tsus_combined_sf[alt_tsus_combined_sf$TSU_ID >1,"TSU_Type"] <- "Alternative"
@@ -516,16 +522,16 @@
     
     alt_tsus_combined_sf <- alt_tsus_combined_sf %>%
       dplyr::select("TSU_Name","PSU_ID","SSU_ID","TSU_ID","PSU_Type","SSU_Type","TSU_Type","geometry")
-
-## 18 - Plot SSUs and TSUs ===========================
-
-  # Plot of alternative PSUs
+    
+    ## 18 - Plot SSUs and TSUs ===========================
+    
+    # Plot of alternative PSUs
     plot(cov.dat$PC1, main="Alternative PSUs Distribution")
     plot(country_boundaries[1], col=NA, reset=FALSE, add=TRUE)
     plot(replacements[1], col="red", add=TRUE)
     plot(alt_tsus_combined_sf[1], col="black", pch=19, cex=0.5, add=TRUE)
-  
-  # Plot first alternative PSU with target and alternative SSUs
+    
+    # Plot first alternative PSU with target and alternative SSUs
     plot(selected_psu[1], col=NA, reset=FALSE, main="Alternative PSU")
     plot(ssu_grid_sf[primary_ssus_indices, ], col="blue", add=TRUE)
     plot(ssu_grid_sf[alternative_ssus_indices, ], col="red", add=TRUE)
@@ -533,26 +539,35 @@
     legend("bottomleft", 
            c("Target SSU", "Alternative SSU", "Alternative TSUs"), fill=c("blue", "red",  0), border=c("black","black",NA), horiz=F, cex=0.8, pch = c(NA,NA,3), col=c(NA,NA,"green"))
     
-
-## 19 - Plot and export SSUs and TSUs ===========================
+    # Add cluster information to the TSUS
+    replacements <- replacements %>%
+      rename(Replace_ID= cluster) %>%
+      select(!ID)
   
-  # Export to shapefile
+    alt_tsus_combined_sf <- st_join(alt_tsus_combined_sf, replacements)
+
+    ## 19 - Plot and export SSUs and TSUs ===========================
+    
+    # Export to shapefile
     write_sf(replacements,paste0(results.path,"/PSUs_replacements.shp"))
     write_sf(alt_tsus_combined_sf,paste0(results.path,"/TSUs_replacements.shp"))
-
-## 20 - Count number of PSU available for each cluster ===========================
-
-  # Count number of PSU
+    
+    ## 20 - Count number of PSU available for each cluster ===========================
+    
+    # Count number of PSU
     valid_counts <- valid.PSU_clusters %>%
       group_by(cluster) %>%
       summarise(Count = n())
-  
-  # Count clusters in remaining.PSU_clusters
+    
+    # Count clusters in remaining.PSU_clusters
     remaining_counts <- remaining.PSU_clusters %>%
       group_by(cluster) %>%
       summarise(Count = n())
-  
-  # Join to see availability
+    
+    # Join to see availability
     availability <- st_join(valid_counts, remaining_counts, by = "cluster", suffix = c("_valid", "_remaining"))
     write_sf(availability,paste0(results.path,"/availability.shp"))
-  
+    
+    
+    
+    
