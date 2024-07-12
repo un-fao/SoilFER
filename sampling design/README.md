@@ -11,9 +11,9 @@ The covariates regarding soil climate for Honduras must be retrieved from the fo
 
 https://www.dropbox.com/scl/fi/nm4z0t43fy7mfs1524jpm/newhall.tif?rlkey=8w8xy358hsln0j556hmlusii2&dl=0
 
-Landuse layer is composed of a single raster delineating the location of "Coffee/African Palm/Banana/Sugarcane" crops. This is a layer for running only this example. 
+Crop layer is composed of a single raster delineating the location of crops in Honduras. 
 
-Note that the three raster files (coffee_2018.tif, covariates_HND.tif and newhall.tif) must be stored in the '/data/raster' folder or change the correspoinding path in the R script.  
+Note that the three raster files (crops.tif, covariates_HND.tif and newhall.tif) must be stored in the '/data/raster' folder or change the correspoinding path in the R script.  
 
 The R code is in both 'R' and 'Rmd' files within the '/scripts' folder.
 
