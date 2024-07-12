@@ -1,4 +1,4 @@
-# Script to create a sampling design in crop areas for Honduras
+# Script to create a sampling design in crop areas in Honduras
 
 ## 1 - Set environment and load libraries ===========================
 
@@ -147,19 +147,15 @@
 ## 6 - Load Sampling Universe ===========================
 
   # Load land use data. We use 2 landuse Spatraster objects
-    # A First one at 10 meter resolution to define the landuse area (crops) and a Second one at 1 ha resolution to select PSUs (lu)
-    #lu <- rast(paste0(raster.path,"coffee_2018.tif"))
-    crops <- rast(paste0(raster.path,"Mapa_cobertura.tif")) # 10 meter pixel resolution
+    # A First layer, at 10 meter resolution, to define the crop area (crops), and a Second layer, at 1 ha resolution, to select PSUs (lu)
+    crops <- rast(paste0(raster.path,"crops.tif")) # 10 meter pixel resolution
     names(crops) <- "lu"
-    crops <- subst(crops, "Bosque", NA)
-    crops <- as.numeric(crops)
-    crops <- subst(crops, 0, NA)
-    crops <- crops/crops  # Ensures that raster land use has values 1 and NA
-    # Aggregate to 1 ha pixel size
+    # Project the map to the country EPSG
+    crops <- terra::project(crops, paste0("EPSG:", epsg))
+
+    # Aggregate to ~ 1 ha pixel size
     lu <- aggregate(crops,10, fun=modal, cores=4, na.rm=T) # 100 meter pixel resolution
     names(lu) <- "lu"
-    plot(lu)
-    
 
 ## 7 - Generate PSUs ===========================
 
@@ -567,7 +563,4 @@
     # Join to see availability
     availability <- st_join(valid_counts, remaining_counts, by = "cluster", suffix = c("_valid", "_remaining"))
     write_sf(availability,paste0(results.path,"/availability.shp"))
-    
-    
-    
     
