@@ -13,7 +13,7 @@ https://www.dropbox.com/scl/fi/nm4z0t43fy7mfs1524jpm/newhall.tif?rlkey=8w8xy358h
 
 Crop layer is composed of a single raster delineating the location of crops in Honduras. 
 
-Note that the three raster files (crops.tif, covariates_HND.tif and newhall.tif) must be stored in the '/data/raster' folder or change the correspoinding path in the R script.  
+Note that the three raster files (crops.tif, covariates_HND.tif and newhall.tif) must be stored in the '/data/rasters' folder or change the correspoinding path in the R script.  
 
 The R code is in both 'R' and 'Rmd' files within the '/scripts' folder.
 
