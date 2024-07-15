@@ -151,7 +151,7 @@
     crops <- rast(paste0(raster.path,"crops.tif")) # 10 meter pixel resolution
     names(crops) <- "lu"
     # Project the map to the country EPSG
-    crops <- terra::project(crops, paste0("EPSG:", epsg))
+    crops <- terra::project(crops, paste0("EPSG:", epsg), method="near")
 
     # Aggregate to ~ 1 ha pixel size
     lu <- aggregate(crops,10, fun=modal, cores=4, na.rm=T) # 100 meter pixel resolution
