@@ -24,7 +24,7 @@
     raster.path <- "data/rasters/"
     shp.path <- "data/shapes/"
     other.path <- "data/other/"
-    landuse_dir<-"data/results/crops/"
+    landuse_dir <- "data/results/crops/"
     # check if landuse directory exists if not create it
     if (!file.exists(landuse_dir)){
       # create a new sub directory inside the main path
