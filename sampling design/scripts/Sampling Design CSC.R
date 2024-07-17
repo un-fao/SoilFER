@@ -156,8 +156,9 @@
     # A First layer, at 10 meter resolution, to define the crop area (crops), and a Second layer, at 1 ha resolution, to select PSUs (lu)
     crops <- rast(paste0(raster.path,"crops.tif")) # 10 meter pixel resolution
     names(crops) <- "lu"
-    # Project the map to the country EPSG
+    # Project the map to the country EPSG and crop by country boundary
     crops <- terra::project(crops, paste0("EPSG:", epsg), method="near")
+    crops <- crop(crops,country_boundaries)
 
     # Aggregate to ~ 1 ha pixel size
     lu <- aggregate(crops,10, fun=modal, cores=4, na.rm=T) # 100 meter pixel resolution
