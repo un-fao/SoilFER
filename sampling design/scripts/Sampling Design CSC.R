@@ -158,7 +158,8 @@
     names(crops) <- "lu"
     # Project the map to the country EPSG and crop by country boundary
     crops <- terra::project(crops, paste0("EPSG:", epsg), method="near")
-    crops <- crop(crops,country_boundaries)
+    # Crop raster by boundary
+    crops <- crop(crops, country_boundaries, mask=TRUE, overwrite=TRUE) # Error: [mask] cannot create dataset is due to low disk space availability
 
     # Aggregate to ~ 1 ha pixel size
     lu <- aggregate(crops,10, fun=modal, cores=4, na.rm=T) # 100 meter pixel resolution
