@@ -1,4 +1,4 @@
-<img src="logo_soilfer.jpg" width="50%" /> # *“Soil Mapping for Resilient Agrifood Systems in Central America and Sub-Saharan Africa" - **SoilFER***
+<img src="img/logo_soilfer.jpg" width="50%" /> # *“Soil Mapping for Resilient Agrifood Systems in Central America and Sub-Saharan Africa" - **SoilFER***
 
 SoilFER stands out as a unique framework aimed at unearthing valuable information from soils to guide policymaking and fertilizer recommendations both at national and field scale. 
 
