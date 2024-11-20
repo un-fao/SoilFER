@@ -6,7 +6,7 @@
       <p>SoilFER stands out as a unique framework aimed at unearthing valuable information from soils to guide policymaking and fertilizer recommendations both at national and field scale.</p>
     </td>
     <td style="text-align: right; vertical-align: top; width: 25%;">
-      <img src="img/logo_soilfer.jpg" alt="SoilFER Logo" width="300px">
+      <img src="img/logo_soilfer.jpg" alt="SoilFER Logo" width="600px">
     </td>
   </tr>
 </table>
