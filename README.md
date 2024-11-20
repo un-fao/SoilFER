@@ -1,4 +1,7 @@
-# SOILFER
+<img src="logo_soilfer.jpg" width="50%" /> # *“Soil Mapping for Resilient Agrifood Systems in Central America and Sub-Saharan Africa" - **SoilFER***
 
+SoilFER stands out as a unique framework aimed at unearthing valuable information from soils to guide policymaking and fertilizer recommendations both at national and field scale. 
 
-The folder 'sampling design' contains the scripts and data for the implementation of the Soil Sampling Design in Honduras under the SoilFER project as an example.
+## Folders
+
+The **sampling design folder** includes scripts for implementing soil sampling designs applicable to any country within the SoilFER project framework. To support training sessions, the folder also provides a practical case study based in Zambia, Africa.
