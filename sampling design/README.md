@@ -12,7 +12,7 @@ The first hierarchical level selects the primary sampling units using a spatial 
 
 The environmental covariates for this example can be downloaded from the [raster folder](./data/rasters).
 
-### Environmental Covariates - Climate, Remote Sensing, Landcover, and Topography
+### Environmental Covariates - Climate, Remote Sensing, Land cover, and Topography
 
 These covariates represent critical environmental factors influencing soil and landscape processes. Climate includes variables such as temperature, precipitation, and evapotranspiration. Remote sensing provides data on vegetation indices, surface temperature, and albedo. Land cover offers insights into vegetation and land use patterns, while topography encompasses elevation, slope, curvature, and terrain indices, all of which are essential for understanding spatial variability.
 
