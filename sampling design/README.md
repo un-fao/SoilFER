@@ -1,20 +1,41 @@
-# Soil Sampling Design
-Guidelines and Technical Manual for Soil Sampling Design in SoilFER.
+# SoilFER Technical Manual for Sampling Design
 
-This folder contains the material to produce a Soil Sampling Design for the SoilFER Project, taking information from Honduras as an example, using the three-stage sample procedure proposed at Soils4Africa.Access to the Soils4Africa sampling design protocol: [https://www.soils4africa-h2020.eu/serverspecific/soils4africa/images/Documents/Soils4Africa_D3.2B_Sampling_design_v01.pdf] modified with the inclusion of a 'Covariate Space Coverage' sampling approach at the Primary Sampling Unit (PSU) level.
+The *SoilFER Technical Manual for Sampling Design* provides general guidance on soil sampling design methodologies to ensure precision, reproducibility, and reliability in the collection of soil samples for digital soil mapping and monitoring.
 
-The environmental covariates for Honduras must be retrieved either from GGE using the code in gee.txt or from the following link:
+## Brief Introduction
 
-https://www.dropbox.com/scl/fi/9qmks5aq4hdgubnskyw35/covariates_HND.tif?rlkey=p9eav54m697cg6h8map6hw5dc&dl=0
+This folder contains materials to produce a Soil Sampling Design for the SoilFER Project, using a study case in Zambia as an example. The design applies a three-stage hierarchical hybrid method incorporating both probability and non-probability sampling for soil mapping and monitoring within the SoilFER framework.
 
-The covariates regarding soil climate for Honduras must be retrieved from the following link:
+The first hierarchical level selects the primary sampling units using a spatial coverage sampling method based on environmental covariates (model-based). The second and third hierarchical levels select the secondary and tertiary sampling units using simple random sampling and stratified random sampling, respectively, both without replacement (design-based). This implementation standardizes soil sampling methodologies across the various countries involved in the project.
 
-https://www.dropbox.com/scl/fi/nm4z0t43fy7mfs1524jpm/newhall.tif?rlkey=8w8xy358hsln0j556hmlusii2&dl=0
+## Folder Contents - Rasters
 
-Crop layer is composed of a single raster delineating the location of crops in Honduras. 
+The environmental covariates for this example can be downloaded from the [raster folder](./data/rasters).
 
-Note that the three raster files (crops.tif, covariates_HND.tif and newhall.tif) must be stored in the '/data/rasters' folder or change the correspoinding path in the R script.  
+### Environmental Covariates - Climate, Remote Sensing, Landcover, and Topography
 
-The R code is in both 'R' and 'Rmd' files within the '/scripts' folder.
+These covariates represent critical environmental factors influencing soil and landscape processes. Climate includes variables such as temperature, precipitation, and evapotranspiration. Remote sensing provides data on vegetation indices, surface temperature, and albedo. Land cover offers insights into vegetation and land use patterns, while topography encompasses elevation, slope, curvature, and terrain indices, all of which are essential for understanding spatial variability.
 
-All the results form the script will be stored in the '/data/results' folder.
+The file named **`covs_zam_clipped.tif`** contains the environmental variables retrieved from Google Earth Engine using the code in `gee.txt`. There are two ways to retrieve these variables:
+1. By uploading data for the entire country using its ISO Alpha-3 code (e.g., `var ISO = ['ZMB'];`).
+2. By using a shapefile with the country boundaries (e.g., `var shapefile = ee.FeatureCollection('projects/ee-soilfer/assets/your_shapefile');`).
+
+### Environmental Covariates - Soil Climate
+
+Soil climate refers to the Normalized Soil Moisture (NSM) factor, which relates to soil water content, precipitation, and evapotranspiration. These factors are essential for assessing soil moisture regimes, soil water availability, and soil-climate interactions.
+
+Environmental variables related to soil climate can be generated using the R code (CITE HERE). The file named **`newhall_zam_clipped.tif`** contains these variables, so there is no need to regenerate them here.
+
+### Land Use - Crops
+
+Land cover data at 10 m or 100 m resolution can be retrieved using the [Hand-in-Hand Geospatial Platform](https://data.apps.fao.org/?lang=en) and Copernicus products via the `gee.txt` code.
+
+The crop layer consists of a single raster delineating the location of crops in the region of interest. This layer is named **`cropland_clipped_zmb_v1_epsg_3857.tif`**.
+
+## Important Notes
+
+- The three raster files (**cropland_clipped_zmb_v1_epsg_3857.tif**, **covs_zam_clipped.tif**, and **newhall_zam_clipped.tif**) **MUST** be stored in the `./data/rasters` folder. Alternatively, update the corresponding file paths in the R script.
+
+- The R code is available in both `R` and `Rmd` files within the `/scripts` folder.
+
+- All results generated by the scripts will be stored in the `/data/results` folder.
