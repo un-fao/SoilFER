@@ -8,7 +8,7 @@ This folder contains materials to produce a Soil Sampling Design for the SoilFER
 
 The first hierarchical level selects the primary sampling units using a spatial coverage sampling method based on environmental covariates (model-based). The second and third hierarchical levels select the secondary and tertiary sampling units using simple random sampling and stratified random sampling, respectively, both without replacement (design-based). This implementation standardizes soil sampling methodologies across the various countries involved in the project.
 
-## Folder Contents - Rasters
+## Folder Content - Rasters
 
 The environmental covariates for this example can be downloaded from the [raster folder](./data/rasters).
 
