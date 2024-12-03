@@ -1,0 +1,1487 @@
+---
+output:
+  html_document:
+    toc: true
+    toc_float: false
+    number_sections: true
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "D:/FAO/github/SoilFER/sampling design")
+
+```
+
+
+
+## Sampling Design: Script overview
+
+This chapter is designed for users with a basic understanding of R programming, and provides a comprehensive guide to implementing a soil sampling design for soil monitoring and mapping.  
+
+><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Ensure you have the `tinytex`, `knitr`, `rmarkdown`, and `rstudioapi` R packages installed to successfully run and render R Markdown documents before running this script.  
+Additionally, install `tinytex::install_tinytex()` by running `tinytex::install_tinytex()` to enable LaTeX support for PDF generation. </p>
+
+### Setting Up the Environment and Loading Libraries
+
+First, set the working directory to the location of your R script. This ensures that all paths in the script are relative to the script's location.
+
+```{r set-working-directory, include=TRUE, warning=FALSE}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+setwd("../") # Move wd down to the main folder
+getwd()
+
+```
+
+### Install required libraries
+
+The script uses several R libraries, each serving a specific purpose. Below is a quick summary of the key functions of these libraries:
+
+```{r table-r-packages, include=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# Load the knitr package for table creation
+require(knitr)
+
+# Create a data frame with the packages and their purposes
+packages_table <- data.frame(
+  Package = c(
+    "sp", "terra", "raster", "sf", "sgsR", "entropy", "tripack", "tibble", 
+    "manipulate", "dplyr", "synoptReg", "doSNOW", "Rfast", "fields", "ggplot2", "rassta"
+  ),
+  Purpose = c(
+    "Handling spatial data and performing geographic operations.",
+    "Working with raster and vector spatial data, including transformations and analyses.",
+    "An older but still widely used library for handling raster data. The terra R package has been designed as its replacement.",
+    "Modern and efficient library for handling vector spatial data.",
+    "Tools for spatial grid sampling and geostatistics.",
+    "Estimating entropy and related measures.",
+    "Generating triangulations and handling Voronoi tessellations.",
+    "An enhanced version of data frames with better usability.",
+    "Creating interactive visualizations.",
+    "Data manipulation and transformation.",
+    "Clustering and Principal Component Analysis (PCA) for spatial data.",
+    "Parallel computing for speeding up tasks.",
+    "Tools for faster computation of statistical methods.",
+    "Tools for spatial data interpolation and visualization.",
+    "Data visualization using the grammar of graphics.",
+    "Raster spatial sampling and analysis tools."
+  )
+)
+
+# Generate a markdown table using the knitr package
+knitr::kable(packages_table, format = "markdown", caption = "Summary of required R libraries and Their purposes")
+
+```
+
+
+Some libraries might need to be installed from GitHub before loading. Uncomment and run the lines below to install the `remotes` and then the `synoptReg` R packages. If you have not faced any issues loading all these libraries at once, there is no need to run the commented lines. 
+
+```{r loading-r-packages, include=TRUE, warning=FALSE, message=FALSE}
+
+# Install synoptReg package from github
+    #install.packages("remotes") # Install remotes if not installed
+    #remotes::install_github("lemuscanovas/synoptReg")
+
+packages <- c("sp", "terra", "raster", "sf", "sgsR", "entropy", 
+              "tripack", "tibble", "manipulate", "dplyr", "synoptReg", 
+              "doSNOW", "Rfast", "fields", "ggplot2", "rassta")
+
+invisible(lapply(packages, library, character.only = TRUE))
+
+rm(packages)
+
+```
+
+An alternative and beginner-friendly way of install R packages using RStudio is through the **Packages** tab in RStudio. First of all, locate this tab in the bottom-right pane of RStudio and click on it. Then, click the *Install* button at the top of the tab. In the dialog box that appears, type the name of the package (e.g., `terra`) in the text field. Make sure that *Install dependencies* box is checked, and finally, click *Install* to download and install the package.
+
+### Define variables, and parameters
+
+Several variables and parameters must be defined to establish a consistent framework for the script. 
+
+The `ISO.code` variable is used to define the unique [Alpha-3 ISO code](https://www.iso.org/obp/ui/#search) of the country of interest. This standard ensures consistency when naming variables and file paths throughout the script. 
+
+```{r iso-code, include=TRUE, warning=FALSE, message=FALSE}
+
+ISO.code <- "ZMB" 
+
+```
+><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> In this example, **"ZMB"** is used as the ISO code for Zambia. </p>
+
+The SoilFER project focuses on three primary land-use types: croplands (80%), grasslands (15%), and forests (5%). In this example, the `landuse` variable specifies *croplands* as the focus of analysis.
+
+```{r landuse, include=TRUE, warning=FALSE, message=FALSE}
+
+landuse <- "crops"
+
+```
+
+This section sets the file paths for accessing data such as raster files, shapefiles, and other resources. Additionally, it ensures the creation of a results folder for storing processed files related to the specified land use. Organizing file paths ensures that all resources and results are systematically stored and accessed.
+
+```{r path-to-folders, include=TRUE, warning=FALSE, message=FALSE}
+
+# Path to data folders
+raster.path <- "data/rasters/"
+shp.path <- "data/shapes/"
+other.path <- "data/other/"
+landuse_dir <- paste0("data/results/", landuse, "/")
+   
+# check if landuse directory exists if not create it
+if (!file.exists(landuse_dir)){dir.create(landuse_dir)}
+
+results.path <- landuse_dir
+
+```
+
+The `epsg` variable specifies the coordinate reference system used for spatial data. EPSG codes are globally recognized standards for geospatial datasets. If you do not have this information, you can search [here](https://epsg.io/).
+
+```{r epsg-system, include=TRUE, warning=FALSE, message=FALSE}
+
+epsg <- "EPSG:3857"
+
+```
+
+Users can calculate the total number of sampling sites based on predefined values. For example,out of 300 total sites (i.e., samples), 70% are selected for analysis (`share`), as this percentage aligns with the proportion of croplands. The final number of samples is stored in `nsamples`. Adjusting the number of sites ensures that only a subset of the data is analyzed.
+
+```{r number-sites, include=TRUE, warning=FALSE, message=FALSE}
+
+nsamples <- 300
+share <- 0.80
+nsamples <- nsamples * share
+
+```
+
+Primary Sampling Units (PSUs) and Secondary Sampling Units (SSUs) are defined here, along with their sizes and the number of target/alternative SSUs. PSUs are large units of 2 km x 2 km used as a sampling framework, while SSUs are smaller units (1 hectare or 100 m x 100 m) nested within PSUs. Tertiary Sampling Units (TSUs) represent individual sampling points within SSUs. 
+
+```{r number-sus, include=TRUE, warning=FALSE, message=FALSE}
+# Define the number of PSUs to sample
+n.psu <- round(nsamples/8)
+  
+# Define PSU and SSUs sizes 
+psu_size <- 2000  # (default = 2km x 2 km)
+ssu_size <- 100 # (default = 100m x 100m = 1 ha)
+  
+# Define number of target and alternative SSUs at each PSU
+num_primary_ssus <- 4
+num_alternative_ssus <- 3
+    
+# Define number of TSUs at each SSU
+number_TSUs <- 3
+
+```
+
+The `iterations` variable defines how many times the clustering algorithm should run to optimize results. Increasing the number of iterations improves the accuracy of cluster assignment but may increase computation time. `10` is enough.
+
+```{r number-iter-cluster, include=TRUE, warning=FALSE, message=FALSE}
+
+iterations <- 10
+
+```
+
+The `percent_crop` variable specifies the minimum percentage of crop coverage required for a PSU to be included in the sampling design. This filter ensures that sampling efforts focus on areas with significant crop presence, improving relevance and efficiency.
+
+```{r min-crop-coverage, include=TRUE, warning=FALSE, message=FALSE}
+
+# Define the minimum crop percent in selected PSUs
+percent_crop <- 10 
+
+```
+
+### Functions
+
+**Covariate Space Coverage (CSC)** focuses on ensuring sampling points are well-distritbuted in terms of enviromental covariates, and useful for scenarios where the region has heterogeneous environmental conditions. 
+
+The `CSIS` function  is the backbone of clustering sampling units in the covariate space. It ensures optimal distribution of sampling units based on covariate data while considering any fixed legacy data. Here's a step-by-step explanation:
+
+**Step-by-step Explanation**:
+
++ **Input Parameters**:
+   - `fixed`: A dataset of preselected (fixed) sampling points.
+   - `nsup`: Number of additional (new) sampling points to be selected.
+   - `nstarts`: Number of random starting points for the clustering algorithm.
+   - `mygrd`: A grid of covariate data for the region of interest.
+
++ **Workflow**:
+   - **Initialization**:
+     - Extract the fixed points (`fixed`) and identify their indices (`units`).
+     - Exclude the fixed points from the grid of covariates (`mygrd_minfx`).
+   - **Clustering**:
+     - Randomly initialize `nsup` new sampling points (`centers_sup`).
+     - Combine the fixed points and new centers to form the initial cluster centers (`centers`).
+   - **Iterative Optimization**:
+     - Compute the distance between each point in `mygrd` and the cluster centers.
+     - Assign each point in `mygrd` to the nearest cluster center.
+     - Update the cluster centers by calculating the mean of the points assigned to each cluster.
+     - Check for convergence: Stop if the cluster centers do not change significantly.
+   - **Evaluation**:
+     - Calculate the Mean Squared Shortest Distance (MSSSD) to evaluate the clustering quality.
+     - Save the best clustering result among all `nstarts` attempts.
+
++ **Output**:
+   - `centers`: The optimized cluster centers, including both fixed and new points.
+   - `cluster`: The cluster assignment for each point in the grid.
+
+><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> This function is particularly useful for creating spatially balanced sampling designs by considering existing sampling points and covariate distributions. </p>
+
+
+```{r csc-function, include=TRUE, warning=FALSE, message=FALSE}
+# Define Covariate Space Coverage function
+# Clustering CSC function with fixed legacy data
+CSIS <- function(fixed, nsup, nstarts, mygrd) {
+  n_fix <- nrow(fixed)
+  p <- ncol(mygrd)
+  units <- fixed$units
+  mygrd_minfx <- mygrd[-units, ]
+  MSSSD_cur <- NA
+  for (s in 1:nstarts) {
+    units <- sample(nrow(mygrd_minfx), nsup)
+    centers_sup <- mygrd_minfx[units, ]
+    centers <- rbind(fixed[, names(mygrd)], centers_sup)
+    repeat {
+      D <- rdist(x1 = centers, x2 = mygrd)
+      cluster <- apply(X = D, MARGIN = 2, FUN = which.min) %>% as.factor(.)
+      centers_cur <- centers
+      for (i in 1:p) {
+        centers[, i] <- tapply(mygrd[, i], INDEX = cluster, FUN = mean)
+      }
+      
+      #restore fixed centers
+      centers[1:n_fix, ] <- centers_cur[1:n_fix, ]
+      #check convergence
+      sumd <- diag(rdist(x1 = centers, x2 = centers_cur)) %>% sum(.)
+      if (sumd < 1E-12) {
+        D <- rdist(x1 = centers, x2 = mygrd)
+        Dmin <- apply(X = D, MARGIN = 2, FUN = min)
+        MSSSD <- mean(Dmin^2)
+        if (s == 1 | MSSSD < MSSSD_cur) {
+          centers_best <- centers
+          clusters_best <- cluster
+          MSSSD_cur <- MSSSD
+        }
+        
+        break
+      }
+      
+    }
+    
+    print(paste0(s," out of ",nstarts))
+  }
+  
+  list(centers = centers_best, cluster = clusters_best)
+}
+
+
+```
+
+The `generate_tsu_points_within_ssu` function focuses on generating TSUs within SSUs. It ensures that TSUs are distributed randomly within the defined SSUs while adhering to specific land-use constraints. This function is crucial for creating a hierarchical sampling structure, where TSUs represent the smallest sampling units.
+
+**Step-by-step Explanation**:
+
++ **Input Parameters**:
+   - `ssu`: A SSU where TSUs will be generated.
+   - `number_TSUs`: Number of TSUs to be sampled within the SSU.
+   - `index`: Index of the SSU within the PSU grid.
+   - `ssu_type`: The type of SSU (e.g., Target or Alternative).
+   - `crops`: A raster layer defining the land-use constraints, ensuring TSUs fall within the desired land-use area (e.g., cropland).
+
++ **Workflow**:
+   - **SSU Masking**:
+     - Convert the selected SSU to a spatial vector (`SpatVector`) format for masking.
+     - Clip the land-use raster (`crops`) to the boundaries of the SSU, creating a localized raster for sampling.
+   - **TSU Sampling**:
+     - Use the `sample_srs` function to randomly generate TSU points within the clipped raster area. This ensures TSUs are distributed across the SSU while respecting land-use constraints.
+     - If the number of sampled points is less than the desired number (`number_TSUs`), repeat the sampling process using the `spatSample` function until the required number of TSUs is obtained.
+   - **Metadata Assignment**:
+     - Assign metadata to the sampled TSUs, including:
+       - **PSU_ID**: The PSU ID containing the SSU.
+       - **SSU_ID**: The current SSU ID.
+       - **TSU_ID**: A sequential identifier for each TSU within the SSU.
+       - **SSU_Type**: The type of SSU (e.g., Target or Alternative).
+       - **TSU_Name**: A unique name for each TSU, combining PSU, SSU, and TSU identifiers.
+
++ **Output**:
+   - Returns a dataset containing the randomly sampled TSU points with metadata.
+
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> This function ensures spatial consistency by sampling TSUs only within specified land-use areas, making it ideal for hierarchical sampling designs. </p>
+
+
+```{r tsus-function, include=TRUE, warning=FALSE, message=FALSE}
+
+generate_tsu_points_within_ssu <- function(ssu, number_TSUs, index, ssu_type, crops) {
+  # Convert SSU to SpatVector for masking
+  ssu_vect <- ssu_grid_sf[index, ]
+  # Clip the spatRaster to the SSU to focus the sampling within the SSU boundaries
+  clipped_lu <- crop(crops, ssu_vect)
+  # Generate random points within the clipped spatRaster using sample_srs
+  sampled_points <- sample_srs(clipped_lu, nSamp = number_TSUs)  # Ensure this is compatible or modify
+  # Make sure the TSUs falls within landuse areas
+  while (nrow(sampled_points) < number_TSUs) {
+    sampled_points <- spatSample(clipped_lu, size = number_TSUs)
+  }
+  
+  # Add metadata to the sampled points
+  sampled_points$PSU_ID <- selected_psu$ID
+  sampled_points$SSU_ID <- index
+  sampled_points$TSU_ID <- seq_len(nrow(sampled_points))
+  sampled_points$SSU_Type <- ssu_type
+  sampled_points$TSU_Name <- paste0(sampled_points$PSU_ID,".",sampled_points$SSU_ID,".",seq_len(nrow(sampled_points)))
+  return(sampled_points)
+}
+
+```
+
+### Country boundaries and legacy data
+
+In this step, file paths for country boundaries and legacy soil data are defined using the `file.path` function. These paths are used to locate and load the corresponding shapefiles. After that, the shapefiles are loaded (`st_read`) and converted to an sf object (`st_as_sf`) and transformed (`st_transform`) to the desired and pre-defined CRS using the EPSG code provided in earlier steps using the `sf` package. 
+
+```{r paths-load-boundaries, include=TRUE, message=FALSE, warning=FALSE}
+
+# Define location of country boundaries
+country_boundaries <- file.path(paste0(shp.path,"roi_epsg_3857.shp"))
+# Define location of soil legacy data
+legacy <- file.path(paste0(shp.path,"zmb_legacy_v2_clipped_epsg_3857.shp"))
+
+# Load and transform the country boundaries
+country_boundaries <- sf::st_read(country_boundaries, quiet=TRUE)
+
+if(sf::st_crs(country_boundaries)$epsg!=epsg){
+  country_boundaries <- sf::st_transform(country_boundaries, crs = epsg)
+}
+
+```
+
+Legacy soil data is loaded if the file exists (i.e., if the country has it.). If the data is in a different CRS, it is transformed to match the CRS used for the country boundaries.
+
+```{r load-legacy, include=TRUE, message=FALSE, warning=FALSE}
+# Load legacy data (if it exists)
+if(file.exists(legacy)){
+  legacy <- sf::st_read(legacy, quiet=TRUE)
+  # Transform coordinates to the common projection system
+  if(sf::st_crs(legacy)$epsg!=epsg){
+    legacy <- sf::st_transform(legacy, crs=epsg)
+  }
+  
+  } else {
+    # If legacy data does not exist delete the object "legacy"
+    rm(legacy)
+  }
+
+```
+
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Always verify that all geospatial datasets use the same CRS before performing any spatial operations. Misaligned CRSs can lead to incorrect analyses. </p>
+
+Finally, the `ggplot2` package is used to visualize the country boundaries and overlay the legacy soil data. This ensures the data was loaded and transformed correctly.
+
+```{r fig-country-legacy, fig.align='center', message=FALSE, echo=TRUE}
+
+ggplot(data = country_boundaries) + 
+  geom_sf() + 
+  geom_sf(data = legacy, aes(geometry = geometry))
+
+```
+
+### Environmental covariates - Optional
+
+The optional environmental covariates include information on non-protected areas, high slope mask, geology, and geomorphology. These inputs are optional and do not affect the selection of sampling units.
+
+Each explanatory dataset is specified as a file path. This approach ensures clear organization of data sources. The variables `geo.classes` and `geomorph.classes` are defined to identify fields within the geology and geomorphology datasets that store their respective types/classes. 
+
+```{r paths-env-opt, include=TRUE, message=FALSE, warning=FALSE}
+
+# Non-protected areas (raster)
+npa <- file.path(paste0(shp.path,"zmb_national_parks_zari_clipped_epsg_3857.shp"))
+#  High slopes (binary raster with 1=<50% and NA = >=50%) - QGIS Calculator 
+slope <- file.path(paste0(raster.path,"zmb_clipped_slope_mask_epsg_3857.tif")) 
+# Geology
+geo <- file.path(paste0(shp.path,"zmb_geology_clipped_epsg_3857.shp"))
+# Field for geologic classes in the shape
+geo.classes <- "GEO"
+# Geomorphology
+geomorph <- file.path(paste0(raster.path,"zmb_clipped_Geomorphon.tif"))
+# Field for geomorphology classes in the shape
+geomorph.classes <- "CODR"
+
+
+```
+
+After define the location of those files, it is time to load them. 
+
+Non-protected areas (NPAs) can be represented as either shapefiles or raster files. The provided code processes shapefiles directly. If the dataset is in raster format, some lines must be commented or uncommented accordingly to handle raster operations. The primary goal is to calculate the difference between the country boundary and the protected areas, isolating non-protected areas for use in subsequent steps.
+
+```{r loading-env-opt-npa, include=TRUE, message=FALSE, warning=FALSE, results='hide'}
+# Non-protected areas (if it exists)
+if(file.exists(npa)){
+  npa <- sf::st_read(npa, quiet = FALSE) # Import Protected area
+  npa <- sf::st_union(npa)
+  npa <- sf::st_difference(country_boundaries, npa)
+  #npa <- rast(npa) 
+  if(sf::st_crs(npa)$epsg !=epsg){
+    npa <- sf::st_transform(npa, crs = epsg)
+    #npa <- project(npa, epsg, method="near")
+  }
+  
+    } else {
+      # If non-protected areas data does not exist delete the object "npa"
+      rm(npa)
+    }
+```
+
+The slope mask represents areas with a slope less than 50%. This dataset is typically generated using GIS software such as QGIS. After loading, the mask values are standardized to 0 or 1. This step ensures that only areas meeting the slope criteria are included in subsequent analyses. If slope data is missing, the variable is removed.  
+
+```{r loading-env-opt-slope, include=TRUE, message=FALSE, warning=FALSE, results='hide'}
+# Slopes < 50% raster (if it exists)
+if(file.exists(slope)){
+  slope <- rast(slope)
+  if(crs(slope)!=epsg){
+    slope <- project(slope, epsg, method="near")
+  }
+  slope <- slope/slope
+  } else {
+    # If slope data does not exist delete the object "slope"
+    rm(slope)
+  }
+```
+
+The geology dataset is a shapefile containing geological classes. If the dataset exists, it is loaded, and its CRS is transformed for consistency. The geological classes are then converted to numeric values for compatibility with subsequent processing steps.
+
+```{r loading-env-opt-geo, include=TRUE, message=FALSE, warning=FALSE, results='hide'}
+# Geology (if it exists)
+if(file.exists(geo)){
+  geo <- sf::st_read(geo, quiet=TRUE)
+  if(sf::st_crs(geo)$epsg !=epsg){
+    geo <- sf::st_transform(geo, crs=epsg)
+  }
+  geo$GEO <- as.numeric(as.factor(geo[[geo.classes]]))
+  } else {
+    # If legacy data does not exist delete the object "geo"
+    rm(geo)
+  }
+
+```
+
+Geomorphology data can be provided as either a raster or shapefile. The code handles both formats by checking the file extension. If the data is a raster, it is loaded directly. If it is a shapefile, the CRS is transformed, and the geomorphology classes are converted to numeric values. If the file is neither a raster nor a shapefile, a warning is issued.
+
+```{r loading-env-opt-geomor, include=TRUE, message=FALSE, warning=FALSE, results='hide'}
+# Geomorphology (if it exists)
+if (file.exists(geomorph)) {
+  # Check the file extension to determine if it is a raster (.tif) or shapefile (.shp)
+  file_extension <- tools::file_ext(geomorph)
+  if (file_extension == "tif") {
+    # If it's a TIFF file, no processing is needed
+    geomorph <- rast(geomorph)
+    names(geomorph) <- 'GEOMORPH'
+    # No further action required for TIFF files
+    if(crs(geomorph)!=epsg){
+      geomorph <- project(geomorph, epsg, method="near")
+    }
+    } else if (file_extension == "shp") {
+      # If shapefile, execute the shapefile processing code
+      geomorph <- sf::st_read(geomorph, quiet = TRUE)
+      # Check and transform CRS if necessary
+      if (sf::st_crs(geomorph)$epsg != epsg) {
+        geomorph <- sf::st_transform(geomorph, crs = epsg)
+      }
+      geomorph$GEOMORPH <- as.numeric(as.factor(geomorph[[geomorph.classes]]))
+      } else {
+        # If the file is neither a raster nor a shapefile, handle the error or delete the object
+        warning("File format not recognized. Expected .tif or .shp.")
+        rm(geomorph)
+      }
+  } else {
+    # If the file does not exist, delete the object "geomorph"
+    rm(geomorph)
+  }
+
+```
+
+
+### Mandatory environmental covariates
+
+A list of mandatory environmental covariates was created to serve as parameters for selecting sampling units, providing a baseline for countries lacking high-resolution environmental data. If available, countries may use their own datasets as substitutes. 
+
+The following steps outline how covariates are loaded, processed, and prepared for analysis. Let's take a look into them! 
+
+The `list.files()` function is used to locate raster files containing covariate data, and these files are loaded into a SpatRaster object using `terra::rast()`. We have displayed in a table the covariate names for easy reference and interpretation.
+
+```{r loading-covs, include=TRUE, message=FALSE, warning=FALSE, results='hold'}
+# Load covariate data
+cov.dat <-  list.files(raster.path, pattern = "covs_zam_clipped.tif$",  recursive = TRUE, full.names = TRUE)
+cov.dat <- terra::rast(cov.dat) # SpatRaster from terra
+
+# Convert the variable names into a matrix with 3 columns
+cov.dat.names <- matrix(names(cov.dat), ncol = 3, byrow = TRUE)
+
+# Create a markdown table
+knitr::kable(cov.dat.names, format = "markdown",  
+             caption = "Environmental covariates")
+
+```
+
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> There is an initial number of `r length(names(cov.dat))` environmental covariates. </p>
+
+The `newhall` dataset contains soil climate variables like temperature and moisture regimes. Subdivisions that are not required (`regimeSubdivision1` and `regimeSubdivision2`) are removed to optimize processing.
+
+
+```{r loading-newhall, include=TRUE, message=FALSE, warning=FALSE, results='hold', eval=TRUE}
+# Load soil climate data
+newhall <-  list.files(raster.path, pattern = "newhall_zam_clipped.tif$",  recursive = TRUE, full.names = TRUE)
+newhall <- terra::rast(newhall) # SpatRaster from terra
+
+# Convert the variable names into a matrix with 3 columns
+newhall.names <- matrix(names(newhall), ncol = 3, byrow = TRUE)
+
+# Create a markdown table
+knitr::kable(newhall.names, format = "markdown",  
+             caption = "Environmental covariates")
+
+# Delete regimeSubdivisions (don't needed)
+newhall$regimeSubdivision1 <- c()
+newhall$regimeSubdivision2 <- c()
+```
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> The final number of soil climate variables is `r length(names(newhall))`. </p>
+
+For subsequent statistical analysis, categorical covariates must be converted into binary layers to ensure compatibility with spatial clustering. Following this, the original covariates, `temperatureRegime` and `moistureRegime` were removed from `newhall`.
+
+```{r remove-newhall-temp-moist, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
+# Convert temperatureRegime and moistureRegime to dummy variables (1 = presence; 0 = absence)
+temperatureRegime <- dummies(ca.rast = newhall$temperatureRegime, preval = 1, absval = 0)
+moistureRegime <- dummies(ca.rast = newhall$moistureRegime, preval = 1, absval = 0)
+
+# Delete temperatureRegime and moistureRegime rasters from soil climate data
+newhall$temperatureRegime <- c()
+newhall$moistureRegime <- c()
+```
+
+The processed soil climate data is appended to the main covariate stack (`cov.dat`). If the dataset uses a different coordinate reference system (CRS), it is reprojected to match `epsg`.
+
+```{r merge-covs-newhall, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
+# Merge covs and climate data
+cov.dat <- c(cov.dat, newhall,temperatureRegime,moistureRegime)
+    
+# Project covariates if necessary
+if(crs(cov.dat)!=epsg){
+  cov.dat <- terra::project(cov.dat, epsg, method="near")
+}
+
+```
+
+The loaded geology data is converted into raster layers and dummy variables to ensure it can be included in spatial clustering and analysis.
+
+```{r transf-merge-geo, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
+# Transform Geology if exists
+if(exists("geo")){
+  geo <- rasterize(as(geo,"SpatVector"), cov.dat,field="GEO")
+  geo <- dummies(ca.rast = geo$GEO, preval = 1, absval = 0)
+  } else {
+    # If Geology data does not exist delete the object "geo"
+    rm(geo)
+  }
+
+# Merge covs and geology if exists)
+if(exists("geo")){
+  cov.dat <- c(cov.dat, geo)
+} 
+
+```
+
+The same process is applied to geomorphology data, ensuring compatibility with the other covariates.
+
+```{r transf-merge-geomorph, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
+# Transform geomorphology if exists and 
+# Check if the 'geomorph' object exists
+if (exists("geomorph")) {
+  # Check if 'geomorph' is already a raster
+  if (!inherits(geomorph, "SpatRaster")) {
+    # If 'geomorph' is not a raster, convert it to a raster
+    geomorph <- rasterize(as(geomorph, "SpatVector"), cov.dat, field = "GEOMORPH")
+  }
+  # Apply the dummies function, assuming geomorph is now a raster
+  geomorph <- dummies(ca.rast = geomorph$GEOMORPH, preval = 1, absval = 0)
+}
+
+# Merge covs and geomorph (if exists)
+if (exists("geomorph")) {
+  # Ensure both rasters have the same resolution and extent
+  if (!identical(ext(cov.dat), ext(geomorph))) {
+    geomorph <- extend(geomorph, cov.dat)
+  }
+  # Optionally, if they have different resolutions, resample geomorph to match cov.dat
+  if (!all(res(cov.dat) == res(geomorph))) {
+    geomorph <- resample(geomorph, cov.dat, method = "near")
+  }
+  # Merge cov.dat and geomorph
+  cov.dat <- c(cov.dat, geomorph)
+}
+
+```
+
+After stacking, intermediate datasets like `newhall`, `geomorph`, and `geo` are removed using the `rm()` function. This is done to free up memory and avoid unnecessary resource usage. By stacking all the relevant layers into `cov.dat` and cleaning up temporary datasets, the workflow remains efficient, organized, and ready for subsequent analyses like Principal Component Analysis (PCA) or sampling unit selection.
+
+```{r rm-newhall-geomorph-geo, include=TRUE, message=FALSE, warning=FALSE, results='hold', eval=TRUE}
+# Remove newhall SpatRaster and clean memory
+rm(newhall)
+rm(geomorph)
+rm(geo)
+gc()
+
+```
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Stacking is the process of combining multiple spatial data layers (raster datasets) into a single multi-layer object. In the context of geospatial analysis, this is especially useful when you have multiple variables (e.g., environmental covariates, soil properties, or climate data) that need to be analyzed together as a single dataset. </p>
+
+Covariates are cropped to align with the administrative boundary of the target region. The processed dataset is saved as a raster stack for later use.
+
+```{r crop-export-covs, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
+
+# Crop covariates on administrative boundary
+cov.dat <- crop(cov.dat, country_boundaries, mask=TRUE, overwrite=TRUE)
+writeRaster(cov.dat, paste0(raster.path,"cov_dat_stack.tif"),overwrite=TRUE)
+
+# Load cov.dat again, in case of issues
+#cov.dat <- rast(paste0(raster.path,"cov_dat_stack.tif"))
+
+```
+
+PCA is used to reduce the dimensionality of the dataset, retaining only the most important components while removing redundancy. Components explaining 99% of the variance are kept.
+
+```{r pca, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
+# Simplify raster information with PCA  
+pca <- synoptReg::raster_pca(cov.dat)  # Faster than with terra::princomp
+
+# Get SpatRaster layers from the pca object
+cov.dat <- pca$PCA
+summary(cov.dat)
+
+# Subset rasters to main PC (var. explained >= 0.99)
+n_comps <- first(which(pca$summaryPCA[3,] > 0.99))
+cov.dat <- pca$PCA[[1:n_comps]]
+
+```
+
+The processed PCA is exported for future analysis or backup in case of issues.
+
+```{r save-cov-pca, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
+# Save PCA rasters to results folder
+writeRaster(cov.dat,paste0(results.path,"PCA_projected.tif"),overwrite=TRUE)
+
+# Remove pca stack
+rm(pca)
+
+# Load pretreated PCA rasters
+#cov.dat <- rast(paste0(results.path,"PCA_projected.tif")) 
+
+```
+
+
+### Organizing the Sampling Universe
+
+After incorporating all environmental covariates and performing a Principal Component Analysis (PCA), additional steps are taken to refine the sampling universe by removing protected areas, filtering areas with slopes up to 50%, resampling land use data, and filtering legacy data.
+
+This step defines the file path for the **land-use** raster, ensuring that only areas corresponding to the target land-use (e.g., croplands) are considered in the analysis. The land-use raster acts as a key layer for filtering and refining the sampling universe.
+
+```{r path-landuse, include=TRUE, message=FALSE, warning=FALSE}
+
+landuse <- file.path(paste0(raster.path,"cropland_clipped_zmb_v1_epsg_3857.tif"))
+
+```
+
+The land-use is a binary raster where *1* represents land-use of interest and *NA* represents all others. The operation `crops/crops` divides each cell value by itself meaning for cell where the value is not NA (e.g., land-use cells with valid data), the division results in *1*. 
+
+In this example, the current resolution is approximately 20 x 21 m (x, y).
+
+```{r loading-landuse, include=TRUE, message=FALSE, warning=FALSE}
+
+crops <- rast(landuse)
+crops <- crops/crops  
+names(crops) <- "lu"
+crops
+
+```
+
+```{r fig-landuse, fig.align='center', include=TRUE, message=FALSE, echo=FALSE}
+
+plot(crops)
+
+```
+
+Protected areas are excluded from the analysis to ensure that sampling units are not located within legally protected zones. If the `npa` variable exists, the `mask()` function is applied to exclude these regions from the crops raster. Once processed, `npa` is removed to free memory. 
+
+If `npa` is a raster instead of a shapefile, uncomment the appropriate lines in the code and comment out the ones for shapefiles.
+
+```{r removing-protected-areas, include=TRUE, message=FALSE, warning=FALSE}
+
+if(exists("npa")){
+  # If npa is a shapefile
+  crops <- mask(crops, npa)
+  # If npa is a raster. Resample to match crops
+  # npa <- resample(npa,crops, method="near")
+  # crops <- crops * npa
+}
+
+rm(npa)
+
+```
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Use the correct operation for your `npa` dataset type (shapefile or raster) to ensure compatibility and accurate processing. </p>
+
+Restricting the analysis to areas with slopes of 50% or less ensures that sampling focuses on accessible and agriculturally viable regions. Steep slopes are excluded as they are often unsuitable for farming or inaccessible. 
+
+The `slope` raster is resampled to align with the resolution of the crops raster before being used to filter out areas with slopes above 50%. The filtered raster ensures the focus remains on usable land.
+
+```{r filtering-slope-areas, include=TRUE, message=FALSE, warning=FALSE, results='hide'}
+
+if(exists("slope")){
+  # Resample to match crops
+  slope <- resample(slope, crops, method="near")
+  crops <- crops * slope
+}
+
+rm(slope)
+
+```
+
+Land-use is resampled to coarser 100 m resolution, significantly optimizing processing speed and reducing storage requirements. This is achieved by aggregating the 20 m resolution raster data to a 1-hectare resolution (100 m x 100 m). Users can take advantage of multi-core processing to speed up this step.
+
+The `aggregate()` function increases pixel size, where a 5x5 grid of 20 m pixels is combined into one 100 m pixel using the modal value. If we had a 25 m resolution raster, the number would be `4` instead of `5`. The `cores` argument specifies the number of cores to parallelize the process for faster computation.
+
+```{r resample-landuse, include=TRUE, message=FALSE, warning=FALSE}
+
+lu <- aggregate(crops, 5, fun=modal, cores = 4, na.rm=T)
+lu <- lu/lu
+lu
+
+```
+
+```{r fig-landuse-100m, fig.align='center', include=TRUE, message=FALSE, echo=FALSE}
+
+plot(lu)
+
+```
+
+Processed land-use data is saved to ensure data persistence and allow for reuse in future analyses or in case of system interruptions. This is an essential step for safeguarding progress and avoiding re-processing.
+
+The `writeRaster()` function saves the processed land-use raster to disk, and the `rast()` function reloads it when needed.
+
+```{r saving-reloading-landuse, include=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
+
+writeRaster(lu,paste0(raster.path,"cropland_zmb_100m_v1_epsg_3857.tif"),overwrite=TRUE)
+
+lu <- rast(paste0(raster.path,"cropland_zmb_100m_v1_epsg_3857.tif"))
+
+```
+
+Legacy data points are filtered to retain only those that fall within the designated land-use areas. This step ensures that sampling is consistent with the land-use data and improves the relevance of legacy data for the current analysis.
+
+The `terra::extract()` function checks whether each legacy point falls within the land-use raster, marking valid points with a corresponding value. Points outside the designated areas are removed.
+
+```{r filtering-landuse-legacy, include=TRUE, message=FALSE, warning=FALSE, results='hide'}
+
+if (exists("legacy")){
+  legacy$INSIDE <- terra::extract(crops, legacy) %>% dplyr::select(lu)
+  legacy <- legacy[!is.na(legacy$INSIDE),] %>%
+    dplyr::select(-"INSIDE")
+}
+
+```
+
+### Creating Primary Sampling Units
+
+In this section, we generate a grid of Primary Sampling Units (PSUs). PSUs are 2x2 km grid cells that serve as the foundational sampling units.
+
+The `st_make_grid()` function is used to create a grid of 2x2 km square polygons within the boundaries of the study region. The size of the grid cells is determined by the `psu_size` variable that we defined right in the beginning of this code, and each grid cell is assigned a unique identifier (ID).
+
+```{r creating-psus-grid, include=TRUE, message=FALSE, warning=FALSE}
+
+psu_grid <- st_make_grid(country_boundaries, cellsize = c(psu_size, psu_size), square = TRUE)
+psu_grid <- st_sf(geometry = psu_grid)
+psu_grid$ID <- 1:nrow(psu_grid)
+
+```
+
+The next step is to trim the grid to the administrative boundaries of the study region. This ensures that only PSUs within the defined country boundaries are retained. This operation is computationally intensive, especially for large datasets.
+
+```{r triming-psus-grid, include=TRUE, message=FALSE, warning=FALSE}
+
+psu_grid <- psu_grid[country_boundaries[1],]
+
+```
+
+The processed PSU grid is saved to a shapefile using the `write_sf()` function. Saving the grid ensures that the trimmed version is available for future use without needing to repeat the computationally expensive trimming process. The `st_read()` function reloads the saved shapefile as needed.
+
+```{r saving-reloading-psu-grid-full, include=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
+
+write_sf(psu_grid,paste0(results.path,"../grid2k.shp"),overwrite=TRUE)
+
+psu_grid <- sf::st_read(file.path(paste0(results.path,"../grid2k.shp"))) 
+
+```
+
+### Select PSUs with land-use above a certain percentage
+
+This section focuses on identifying *Primary Sampling Units (PSUs)* that meet a minimum threshold for crop coverage. It ensures that sampling efforts are concentrated in areas with sufficient agricultural activity, improving the relevance of the collected data.
+
+the land-use values (`lu`) corresponding to the cells intersecting with the `psu_grid` polygons are extracted. These values represent crop coverage data for each PSU grid cell.
+
+```{r extract-landuse-psu-grid, include=TRUE, message=FALSE, warning=FALSE, results='hide'}
+
+extracted_values <- terra::extract(lu, psu_grid)
+
+```
+
+The extracted land-use data is grouped by grid ID (ID), and the percentage of crop coverage is calculated based on the 1-ha reclassification of land-use (400 pixels represent a 2x2 km PSU). 
+
+Temporary object `extracted_values` are removed to save memory.
+
+```{r summarise-landuse-1ha, include=TRUE, message=FALSE, warning=FALSE}
+
+crop_perc <- extracted_values %>%
+  group_by(ID) %>%
+  summarize(crop_perc = sum(lu, na.rm = TRUE)*100/400)
+
+rm(extracted_values)
+
+```
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> The formula `sum(lu, na.rm = TRUE) * 100 / 400` ensures that the crop percentage is calculated accurately, with 400 being the total pixels in a 2x2 km PSU. </p>
+
+The calculated crop coverage percentages (`crop_perc`) are added to the `psu_grid` polygons, creating a new attribute for each grid. This step prepares the data for further filtering and visualization.
+
+```{r add-crop-perc-psu-grid, include=TRUE, message=FALSE, warning=FALSE}
+
+psu_grid$crop_perc <- crop_perc$crop_perc
+
+```
+
+
+```{r fig-landuse-coverage-psus, fig.align='center', include=TRUE, message=FALSE, echo=FALSE}
+
+ggplot() +
+  geom_sf(data = psu_grid, aes(fill = crop_perc)) +
+  scale_fill_distiller(palette = "Spectral") +
+  theme_minimal()
+
+```
+
+
+Like before, the updated `psu_grid` with crop coverage percentages is saved to a shapefile for backup and potential reuse in future analyses. If needed, the saved file can be reloaded.
+
+```{r save-reload-psu-grid-landuse, include=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
+
+write_sf(psu_grid, file.path(paste0(results.path,"/psu_grid_counts.shp")), overwrite=TRUE)
+
+psu_grid <- sf::st_read(file.path(paste0(results.path,"/psu_grid_counts.shp"))) 
+
+```
+
+Only PSUs meeting the predefined crop coverage threshold (`percent_crop`) are retained. The `percent_crop` variable is defined earlier in the script, allowing flexibility in setting the threshold. This filtering step narrows the focus to areas that are agriculturally relevant. 
+
+```{r subset-landuse-areas-psus, include=TRUE, message=FALSE, warning=FALSE}
+
+psu_grid <- psu_grid[psu_grid$crop_perc > percent_crop,"ID"]
+
+```
+
+The selected PSUs are rasterized, creating a template where each grid cell represents a specific PSU ID. This raster format is essential for integrating PSUs with covariate data and subsequent spatial analyses.
+
+```{r rasterising-psu-grid, include=TRUE, message=FALSE, warning=FALSE}
+
+template <- rast(vect(psu_grid), res = psu_size)
+template <- rasterize(vect(psu_grid), template, field = "ID")
+
+```
+
+### Rasterising PSUs for Covariate Space Coverage
+
+The covariate stack (`cov.dat`) is cropped to the sampling universe defined by the PSU grid. The cropped covariates are then resampled to match the rasterized PSU template, ensuring consistent spatial alignment.
+
+```{r rasterising-psus-csc, include=TRUE, message=FALSE, warning=FALSE}
+
+cov.dat <- crop(cov.dat, psu_grid, mask=TRUE, overwrite=TRUE)
+
+PSU.r <- resample(cov.dat, template)
+
+```
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Why this matters**:</span> Cropping and resampling ensure that the spatial resolution and extent of covariates match the PSU grid, facilitating accurate spatial analysis and clustering. </p>
+
+### GAME ON - Covariate Space Coverage - Computing PSUs
+
+Covariate Space Coverage (CSC) sampling is a clustering technique designed to ensure that sampling units are distributed effectively across a multidimensional space of environmental covariates. Covariates are standardized (centered and scaled), so their mean is 0 and standard deviation is 1. This prevents variables with larger ranges (e.g., elevation vs. precipitation) from dominating the clustering process. The algorithm groups raster cells in covariate space into clusters by minimizing the Mean Squared Shortest Scaled Distance (MSSSD). MSSSD is a measure of how well the points in the dataset fit into their assigned clusters. The term "scaled distance" refers to distances measured in the space of standardized covariates, not physically scaled distances.
+
+*Preparing function parameters*
+
+Before running the CSC function, the raster stack information at the PSU aggregated level is converted into a dataframe with coordinates. This transformation allows for easier manipulation and scaling of covariates.
+
+```{r prepare-function-parameters, include=TRUE, message=FALSE, warning=FALSE}
+
+PSU.df <- as.data.frame(PSU.r,xy=T)
+
+covs <- names(cov.dat)
+
+```
+
+*Scaling covariates*
+
+Environmental covariates are scaled to standardize their values, ensuring all variables contribute equally during clustering. The dataframe `mygrd` represents the scaled covariates at a resolution of 2 km x 2 km (PSUs).
+
+```{r df-scaled-covs-2km, include=TRUE, message=FALSE, warning=FALSE}
+
+mygrd <- data.frame(scale(PSU.df[, covs]))
+
+```
+
+*Performing k-means clustering for CSC*
+
+If legacy data is available, it is utilized to define fixed cluster centers and enhance the sampling design. If not, a traditional k-means clustering approach is used. Thus, legacy data (`legacy`) is filtered to align with the extent of the PSU grid using the `st_filter` function. The `st_coordinates` function extracts spatial coordinates from the legacy dataset, creating a data frame (`legacy_df`) containing the x and y positions of legacy points.
+
+A loop iterates through each legacy point. Using the Euclidean distance formula, the script calculates the distance between each legacy point and all PSUs in the `PSU.df` data frame, which contains covariate information. The nearest PSU to each legacy point is identified using `which.min`, and its index is stored in the units vector. The covariate data corresponding to these fixed points is extracted and scaled (standardized). This step ensures the covariates have equal influence during clustering. The result is stored in the `fixed` object.
+
+If legacy data exists, the *Covariate Space Coverage Sampling (CSIS)* function is used to integrate these fixed legacy points into the clustering process. This ensures the legacy points remain as fixed centers while optimizing the distribution of new points.
+
+If no legacy data is available, standard kmeans clustering is applied to the scaled covariates (`mygrd`), focusing solely on environmental variability to determine the cluster centers.
+
+```{r performing-k-means-csc, include=TRUE, message=FALSE, warning=FALSE}
+
+ if (exists("legacy")){
+   legacy <- st_filter(legacy,psu_grid)
+   legacy_df <- st_coordinates(legacy)
+   units <- numeric(nrow(legacy_df))
+   
+   for (i in 1:nrow(legacy_df)) {
+     distances <- sqrt((PSU.df$x - legacy_df[i, "X"])^2 + (PSU.df$y - legacy_df[i, "Y"])^2)
+     units[i] <- which.min(distances)
+   }
+   
+   fixed <- unique(data.frame(units, scale(PSU.df[, covs])[units, ])) 
+   res <- CSIS(fixed = fixed, nsup = n.psu, nstarts = iterations, mygrd = mygrd)
+   } else {
+     res <- kmeans(mygrd, centers = n.psu, iter.max = 10000, nstart = 100)
+   }
+
+
+```
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Users can follow the progress by observing the printed output. For example, "1 out of 10" indicates that 1 cluster interaction has been done, with 9 more left to process. </p>
+
+This step associates each PSU with its respective cluster, as determined by the clustering algorithm. The cluster assignments from the CSIS function are stored in the PSU dataframe, allowing us to identify the cluster for each grid cell.
+
+```{r store-res-csis-psu-df, include=TRUE, message=FALSE, warning=FALSE}
+PSU.df$cluster <- res$cluster
+```
+
+This step computes the distances from each point in the covariate space to its nearest cluster center. `rdist` calculates the Euclidean distances between the cluster centers and the scaled covariate data. The `apply` function identifies the closest cluster center for each PSU, ensuring accurate assignment to clusters.
+
+```{r distance-center-scaled-covs, include=TRUE, message=FALSE, warning=FALSE}
+D <- rdist(x1 = res$centers, x2 = scale(PSU.df[, covs]))
+units <- apply(D, MARGIN = 1, FUN = which.min)
+```
+
+The MSSSD measures how well the selected clusters represent the overall covariate space. `dmin` calculates the shortest distance from each point to a cluster center. `MSSSD` averages the squared shortest distances, providing a measure of clustering efficiency.
+
+```{r calculating-msssd, include=TRUE, message=FALSE, warning=FALSE}
+dmin <- apply(D, MARGIN = 2, min)
+MSSSD <- mean(dmin^2)
+```
+
+Extracts the PSUs that were selected during the clustering process, including their spatial coordinates and covariates. The `myCSCsample` dataframe holds only the selected PSUs, along with their spatial coordinates (x, y) and associated covariates.
+
+```{r subset-selected-psu-all, include=TRUE, message=FALSE, warning=FALSE}
+myCSCsample <- PSU.df[units, c("x", "y", covs)]
+
+```
+
+Legacy PSUs are sampling points that already exist in the dataset, while new PSUs are points added during the clustering process. This chunk identifies and categorizes the selected PSUs into *"legacy"* and *"new"* types. If legacy data exists, it assigns the label legacy to pre-existing sampling points and new to additional points. If no legacy data exists, all selected PSUs are labeled as new.
+
+```{r identify-type-psu, include=TRUE, message=FALSE, warning=FALSE}
+if (exists("legacy")){
+  myCSCsample$type <- c(rep("legacy", nrow(fixed)), rep("new", length(units)-nrow(fixed)))
+  } else {
+    myCSCsample$type <- "new"
+  }
+```
+
+The selected PSUs (`myCSCsample`) are converted into a spatial object (`sf` class) with specified coordinates (x, y) and the defined coordinate reference system (`epsg`). This transformation allows for geospatial operations and visualization.
+
+```{r conv-myCSCsample, include=TRUE, message=FALSE, warning=FALSE}
+myCSCsample <-  myCSCsample %>%
+  st_as_sf(coords = c("x", "y"), crs = epsg)
+```
+
+Distinguishes between legacy PSUs (existing sampling points) and new PSUs (infill points). Legacy sampling points (`type == "legacy"`) and new points (`type == "new"`) are separated for further analysis and visualization.
+
+```{r subset-infill-legacy-pts, include=TRUE, message=FALSE, warning=FALSE}
+if (exists("legacy")){
+  legacy <-  myCSCsample[myCSCsample$type=="legacy",]
+}
+
+new <-  myCSCsample[myCSCsample$type=="new",] 
+    
+```
+
+Identifies PSUs within the infill data and extracts their unique IDs. The intersection of the PSU grid and infill points ensures only relevant PSUs are selected. The resulting dataframe contains the unique IDs (`ID`) of these PSUs.
+
+```{r intersect-psu-grid-infill-target-psu, include=TRUE, message=FALSE, warning=FALSE}
+PSUs <- sf::st_intersection(psu_grid, new) %>% dplyr::select(ID)
+
+```
+
+The `target.PSUs` dataframe holds only the PSUs identified as targets for sampling. It extracts the PSUs targeted for sampling based on the intersection results.
+
+```{r subset-target-psu, include=TRUE, message=FALSE, warning=FALSE}
+target.PSUs <- psu_grid[psu_grid$ID %in% PSUs$ID,] %>% dplyr::select(ID)
+
+```
+
+
+```{r fig-target-psus, fig.align='center', include=TRUE, message=FALSE, echo=FALSE}
+
+ggplot() +
+  geom_raster(data = as.data.frame(PSU.r$PC1, xy = TRUE), aes(x = x, y = y, fill = PC1)) +
+  scale_fill_viridis_c() +
+  #scale_fill_gradientn(colours = colorspace::diverge_hcl(7)) +
+  geom_sf(data = legacy[1], aes(), color = "#A6AAA5", size = 0.2, shape = 19) +
+  geom_sf(data = target.PSUs, color = "#101010", fill = NA, lwd = 0.8) +
+  geom_sf(data = new[1], aes(), color = "#D81B60", size = 0.5, shape = 19, lwd = 0.7) +
+  labs(title = "Target Primary Sampling Units",
+       x = "Longitude",
+       y = "Latitude",
+       fill = "PC1") +
+  theme_minimal()
+
+```
+
+Temporary objects (`new`, `dmin`, `MSSSD`) are deleted to free up memory and prevent conflicts.
+
+```{r rm-temporary-new-dmin-msssd, include=TRUE, message=FALSE, warning=FALSE, results='hide'}
+rm(new,dmin,MSSSD)
+
+```
+
+Here, you can visualize how the selected PSUs are distributed across the first two principal components (PC1 and PC2) of the environmental covariates.
+
+```{r fig-pc1-pc2, fig.align='center', include=TRUE, message=FALSE, echo=FALSE}
+
+ggplot(PSU.df) +
+  geom_point(mapping = aes(x = PC1, y = PC2, colour = as.character(cluster)), alpha = 0.5) +
+  scale_colour_viridis_d() +
+  geom_point(data = myCSCsample, mapping = aes(x = PC1, y = PC2), size = .5, colour = "red") +
+  scale_x_continuous(name = "PC1") +
+  scale_y_continuous(name = "PC2") +
+  theme(legend.position = "none") +
+  ggtitle("Distribution of sampling PSUs over the space of environmental covariates") 
+
+```
+
+### Computing SSUs and TSUs
+
+In the previous section, we computed PSUs. Now, the focus shifts to SSUs and TSUs, which add hierarchical levels to the sampling process. SSUs are grid cells within each PSU filtered based on a land-use percentage threshold and randomly selected, and TSUs are randomly points within each SSU providing finer sampling points. 
+
+Empty lists are created to store the computed SSUs (`selected_ssus`) and TSUs (`all_psus_tsus`). Each PSU will have its own set of SSUs and TSUs added to these lists.
+
+```{r empty-lists-store-tsus-ssus, include=TRUE, message=FALSE, warning=FALSE}
+selected_ssus <- list()
+
+all_psus_tsus <- list()
+```
+
+This loop iterates over all selected PSUs generating SSUs and TSUs for each PSU. First of all, a grid of SSUs is created within the PSU boundary (`st_make_grid`), and only SSUs meeting the land-use coverage threshold (`percent_crop`) are retained. After that, a specified number of target and alternative SSUs are randomly selected (`num_primary_ssus` and `num_alternative_ssus`). For each SSU, generate TSUs as random points within the SSU boundary being labeled as target or alternative.
+
+```{r computing-ssus-tsus, include=TRUE, message=FALSE, warning=FALSE}
+for (psu_id in 1:nrow(target.PSUs)) {
+  
+  # Selects one PSU at a time 
+  selected_psu <- target.PSUs[psu_id, ]
+  
+  # Generate SSUs within the selected PSU
+  ssu_grid <- st_make_grid(selected_psu, cellsize = c(ssu_size, ssu_size), square = TRUE)
+  ssu_grid_sf <- st_sf(geometry = ssu_grid)
+  
+  # Convert ssu_grid_sf to SpatVector
+  ssu_grid_vect <- vect(ssu_grid_sf)
+  
+  # Extract values of lu for cells that intersect with ssu_grid_vect
+  extracted_values <- extract(crops, ssu_grid_vect, fun=table)
+  
+  # Add lu code to the SSUs    
+  ssu_grid_sf$lu <- (extracted_values[,2]*100)/25
+  ssu_grid_sf <- ssu_grid_sf[ssu_grid_sf$lu > percent_crop, ]
+  
+  print(paste(psu_id, " out of ", nrow(target.PSUs)))
+  
+  # Counts the total number of filtered SSUs
+  total_ssus <- nrow(ssu_grid_sf)
+  
+  # If the PSU contains enough SSUs, a random sample of SSUs is selected
+  if(total_ssus >= (num_primary_ssus + num_alternative_ssus)) {
+    primary_ssus_indices <- sample(1:total_ssus, num_primary_ssus, replace = FALSE)
+    available_for_alternatives <- setdiff(1:total_ssus, primary_ssus_indices)
+    alternative_ssus_indices <- sample(available_for_alternatives, num_alternative_ssus, replace = FALSE)
+    selected_ssus[[psu_id]] <- rbind(ssu_grid_sf[primary_ssus_indices, ], ssu_grid_sf[alternative_ssus_indices, ])
+    
+    primary_tsus <- lapply(primary_ssus_indices, 
+                           function(index) {
+                             generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Target",crops)
+                             }
+                           )
+    # Generate TSUs for alternative SSUs with naming
+    alternative_tsus <- lapply(alternative_ssus_indices, 
+                               function(index) {
+                                 generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
+                                 }
+                               )
+    # Combine all TSUs of the current PSU into one sf object
+    all_psus_tsus[[psu_id]] <- do.call(rbind, c(primary_tsus, alternative_tsus))
+    
+  # If there are not enough SSUs, a warning is issued, and the PSU is skipped.
+  } else {
+    warning(paste("PSU", psu_id, "does not have enough SSUs for selection. Skipping."))
+  }
+}
+
+```
+> <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Users can follow the progress by observing the printed output. For example, `"1 out of 30"` indicates that processing for the first PSU is complete, and there are 29 more PSUs left. </p>
+
+After all TSUs have been generated, they are combined into a single dataset (`all_tsus`). The dataset includes metadata about each TSU's type (Target or Alternative) and its hierarchical assignment to SSUs and PSUs.
+
+```{r combining-all-target-tsus, include=TRUE, message=FALSE, warning=FALSE}
+all_tsus <- do.call(rbind, all_psus_tsus)
+all_tsus$TSU_Type <- "Target"
+all_tsus[all_tsus$TSU_ID >1,"TSU_Type"] <- "Alternative"
+all_tsus$PSU_Type <- "Target"
+all_tsus <- all_tsus %>%
+  dplyr::select("TSU_Name","PSU_ID","SSU_ID","TSU_ID","PSU_Type","SSU_Type","TSU_Type","geometry")
+
+```
+
+```{r fig-target-tsus, fig.align='center', include=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+
+# Define the bounding box for the selected PSU
+bbox_psu <- st_bbox(selected_psu[1])
+lu_bbox = terra::crop(crops, selected_psu[1], mask = T, overwrite = T)
+
+# Define the labels for each type of data
+labels <- c("Target PSU", "Selected SSUs", "Alternative SSUs", "TSUs")
+
+ggplot() +
+  geom_raster(data = as.data.frame(lu_bbox, xy = T), aes(x = x, y = y, fill = lu)) +
+  #scale_fill_gradientn(colours = colorspace::diverge_hcl(7)) +
+  guides(fill = "none")  +
+  geom_sf(data = selected_psu[1], fill = NA, aes(color = labels[1]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = ssu_grid_sf[primary_ssus_indices, ], fill = NA, aes(color = labels[2]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = ssu_grid_sf[alternative_ssus_indices, ], fill = NA, aes(color = labels[3]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = all_tsus, aes(geometry = geometry, color = labels[4]), size = 0.5, shape = 19, show.legend = TRUE) +
+  coord_sf(xlim = c(bbox_psu["xmin"], bbox_psu["xmax"]), ylim = c(bbox_psu["ymin"], bbox_psu["ymax"])) +
+  labs(title = "Target PSU, SSUs, and TSUs",
+       x = "Longitude",
+       y = "Latitude",
+       color = "Legend") +
+  scale_color_manual(values = c("Target PSU" = "blue",
+                                "Selected SSUs" = "blue",
+                                "Alternative SSUs" = "red",
+                                "TSUs" = "black")) +
+  theme_minimal() +
+  theme(legend.position = "right",
+        legend.justification = "center",
+        legend.box.margin = margin(0, 0, 0, 20))
+
+```
+
+### Exporting the target sampling units
+
+This section covers the process of exporting target sampling units.
+
+We start it converting the cluster information into a raster format. Each cell corresponds to a cluster, and the coordinate reference system is assigned to ensure spatial consistency.
+
+```{r convert-clusters-crs, include=TRUE, message=FALSE, warning=FALSE}
+dfr <- PSU.df[,c("x","y","cluster")]
+dfr$cluster <- as.numeric(dfr$cluster)
+dfr <- rasterFromXYZ(dfr)
+crs(dfr) = epsg
+```
+
+Here, the target PSUs are associated with their corresponding cluster IDs by extracting the cluster data.
+
+```{r extract-clusters-id, include=TRUE, message=FALSE, warning=FALSE}
+PSU_cluster.id <- unlist(extract(dfr, target.PSUs))
+    
+valid.PSU_clusters <- target.PSUs %>% mutate(
+  cluster = extract(dfr, target.PSUs, fun = mean, na.rm = TRUE)
+  )
+
+all.PSU_clusters <- psu_grid %>% mutate(
+  cluster = extract(dfr, psu_grid, fun = mean, na.rm = TRUE)
+  )
+
+all.PSU_clusters <- na.omit(all.PSU_clusters)
+```
+
+Cluster information from the PSUs is joined to the TSUs for identification and analysis.
+
+```{r add-clusters-info-tsus, include=TRUE, message=FALSE, warning=FALSE}
+valid.PSU_clusters <- valid.PSU_clusters %>%
+  rename(Replace_ID= cluster) 
+
+all_tsus <- st_join(all_tsus, valid.PSU_clusters)
+
+```
+
+Then, an order is assigned to the TSUs within each PSU. The sampling order differentiates between target TSUs (1–4) and alternative TSUs (5–7).
+
+```{r add-order-sampling-target, include=TRUE, message=FALSE, warning=FALSE}
+all_tsus <- all_tsus %>%
+  group_by(PSU_ID) %>%
+  mutate(order = match(SSU_ID, unique(SSU_ID))) %>%
+  ungroup()
+
+```
+
+Each TSU is assigned a unique site ID for traceability. The ID is constructed using the country code, PSU ID, SSU order, and TSU ID.
+
+```{r final-site-id-target, include=TRUE, message=FALSE, warning=FALSE}
+all_tsus$site_id = paste0(ISO.code, all_tsus$PSU_ID, "-", all_tsus$order, "-", all_tsus$TSU_ID)
+
+```
+
+Finally, target PSUs and TSUs, along with the cluster raster, are saved as shapefiles and raster files for further use.
+
+```{r export-target-SUs, include=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
+
+write_sf(valid.PSU_clusters,paste0(results.path,"/PSUs_target.shp"), overwrite=TRUE)
+
+write_sf(all_tsus,paste0(results.path,"/TSUs_target.shp"), overwrite=TRUE) 
+
+write_sf(all.PSU_clusters,paste0(results.path,"/PSU_pattern_cl.shp"), overwrite=TRUE)
+ 
+writeRaster(dfr, paste0(results.path,"/clusters.tif"), overwrite=TRUE)
+
+```
+
+### Computing alternative PSUs
+
+This step filters out PSUs already used in valid sampling units, leaving only the remaining PSUs for potential replacements.
+
+```{r remain-psus, include=TRUE, message=FALSE, warning=FALSE}
+remaining.PSU_clusters <- all.PSU_clusters %>%
+  filter(!(ID %in% valid.PSU_clusters$ID))
+```
+
+Distinct cluster values from the valid PSUs are identified to guide replacement sampling.
+
+```{r clust-min-values, include=TRUE, message=FALSE, warning=FALSE}
+unique_cluster <- distinct(valid.PSU_clusters, Replace_ID)$Replace_ID
+```
+
+A vector is initialized to store indices of the replacement PSUs.
+
+```{r init-vector, include=TRUE, message=FALSE, warning=FALSE}
+sampled_indices <- integer(0)
+
+```
+
+The loop iterates through each unique cluster, identifying and sampling potential replacements from the remaining PSUs.
+
+```{r loop-replacement, include=TRUE, message=FALSE, warning=FALSE}
+for (clust in unique_cluster) {
+  candidates_indices <- which(remaining.PSU_clusters$cluster == clust)
+  
+  if (length(candidates_indices) > 0) {
+    sampled_index <- sample(candidates_indices, size = 1)
+    sampled_indices <- c(sampled_indices, sampled_index)
+  }
+}
+```
+
+The selected replacement indices are used to create a dataset of replacement PSUs.
+
+```{r final-psus-replacement, include=TRUE, message=FALSE, warning=FALSE}
+
+replacements <- remaining.PSU_clusters[sampled_indices, ]
+
+```
+
+### Computing alternative SSUs and TSUs for alternative PSUs
+
+Alternative SSUs and TSUs are generated for the alternative PSUs using similar methods as for the target PSUs. This process ensures that a backup is available in case PSUs cannot be sampled in field. Therefore, we will not explain the step-by-step again here.
+
+```{r computing-alternative-su, include=TRUE, message=FALSE, warning=FALSE}
+
+# Initialize a list to store TSUs for all PSUs
+alt_psus_tsus_sf <- list()
+selected_ssus_sf <- list()
+
+for (psu_id in 1:nrow(replacements)) {
+  # Selects one PSU at a time 
+  selected_psu <- replacements[psu_id, ]
+  
+  # Generate SSUs within the selected PSU
+  ssu_grid <- st_make_grid(selected_psu, cellsize = c(ssu_size, ssu_size), square = TRUE)
+  ssu_grid_sf <- st_sf(geometry = ssu_grid)
+  
+  # Convert ssu_grid_sf to SpatVector
+  ssu_grid_vect <- vect(ssu_grid_sf)
+  
+  # Extract values of lu for cells that intersect with ssu_grid_vect
+  extracted_values <- extract(crops, ssu_grid_vect, fun=table)
+  
+  # Add lu code to the SSUs 
+  ssu_grid_sf$lu <- (extracted_values[,2]*100)/25
+  ssu_grid_sf <- ssu_grid_sf[ssu_grid_sf$lu > percent_crop, ]
+  
+  print(paste(psu_id, " out of ", nrow(replacements)))
+  
+  # Counts the total number of filtered SSUs
+  total_ssus <- nrow(ssu_grid_sf)
+  
+  # If the PSU contains enough SSUs, a random sample of SSUs is selected
+  if(total_ssus >= (num_primary_ssus + num_alternative_ssus)) {
+    primary_ssus_indices <- sample(1:total_ssus, num_primary_ssus, replace = FALSE)
+    available_for_alternatives <- setdiff(1:total_ssus, primary_ssus_indices)
+    alternative_ssus_indices <- sample(available_for_alternatives, num_alternative_ssus, replace = FALSE)
+    
+    selected_ssus_sf[[psu_id]] <- rbind(ssu_grid_sf[primary_ssus_indices, ], ssu_grid_sf[alternative_ssus_indices, ])
+    
+    # Generate alternative TSUs for SSUs with naming
+    primary_tsus <- lapply(primary_ssus_indices, 
+                           function(index) {
+                             generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
+                             }
+                           )
+    
+    # Generate TSUs for alternative SSUs with naming
+    alternative_tsus <- lapply(alternative_ssus_indices, 
+                               function(index) {
+                                 generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
+                                 }
+                               )
+    
+    # Combine all TSUs of the current PSU into one sf object
+    alt_psus_tsus_sf[[psu_id]] <- do.call(rbind, c(primary_tsus, alternative_tsus))
+    
+    # If there are not enough SSUs, a warning is issued, and the PSU is skipped.
+      } else {
+        warning(paste("PSU", psu_id, "does not have enough SSUs for selection. Skipping."))
+      }
+}
+
+# Combine TSUs from all PSUs into one sf object
+alt_tsus_combined_sf <- do.call(rbind, alt_psus_tsus_sf)
+alt_tsus_combined_sf$TSU_Type <- "Target"
+alt_tsus_combined_sf[alt_tsus_combined_sf$TSU_ID >1,"TSU_Type"] <- "Alternative"
+alt_tsus_combined_sf$PSU_Type <- "Alternative"
+
+alt_tsus_combined_sf <- alt_tsus_combined_sf %>%
+  dplyr::select("TSU_Name","PSU_ID","SSU_ID","TSU_ID","PSU_Type","SSU_Type","TSU_Type","geometry")
+
+```
+
+```{r fig-alternative-tsus, fig.align='center', include=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+
+# Define the bounding box for the selected PSU
+bbox_psu <- st_bbox(selected_psu[1])
+lu_bbox = terra::crop(crops, selected_psu[1], mask = T, overwrite = T)
+
+# Define the labels for each type of data
+labels <- c("Alternative PSU", "Target SSUs", "Alternative SSUs", "Alternative TSUs")
+
+ggplot() +
+  geom_raster(data = as.data.frame(lu_bbox, xy = T), aes(x = x, y = y, fill = lu)) +
+  #scale_fill_gradientn(colours = colorspace::diverge_hcl(7)) +
+  guides(fill = "none")  +
+  geom_sf(data = selected_psu[1], fill = NA, aes(color = labels[1]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = ssu_grid_sf[primary_ssus_indices, ], fill = NA, aes(color = labels[2]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = ssu_grid_sf[alternative_ssus_indices, ], fill = NA, aes(color = labels[3]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = alt_tsus_combined_sf[1], aes(geometry = geometry, color = labels[4]), size = 0.5, shape = 19, show.legend = TRUE) +
+  coord_sf(xlim = c(bbox_psu["xmin"], bbox_psu["xmax"]), ylim = c(bbox_psu["ymin"], bbox_psu["ymax"])) +
+  labs(title = "Alternative PSU, SSUs, and TSUs",
+       x = "Longitude",
+       y = "Latitude",
+       color = "Legend") +
+  scale_color_manual(values = c("Alternative PSU" = "red", 
+                                "Target SSUs" = "blue",
+                                "Alternative SSUs" = "red",
+                                "Alternative TSUs" = "black")) +
+  theme_minimal() +
+  theme(legend.position = "right",
+        legend.justification = "center",
+        legend.box.margin = margin(0, 0, 0, 20))
+
+```
+
+### Exporting the alternative sampling units
+
+This section covers the process of exporting target sampling units.
+
+Cluster information from the alternative PSUs is joined to the TSUs for identification and analysis.
+
+```{r cluster-info-alternative, include=TRUE, message=FALSE, warning=FALSE}
+replacements <- replacements %>%
+  rename(Replace_ID= cluster)
+
+alt_tsus_combined_sf <- st_join(alt_tsus_combined_sf, replacements)
+
+```
+
+Then, an order is assigned to the TSUs within each alternative PSU. The sampling order differentiates between target TSUs (1–4) and alternative TSUs (5–7).
+
+```{r add-order-sampling-alternative, include=TRUE, message=FALSE, warning=FALSE}
+alt_tsus_combined_sf <- alt_tsus_combined_sf %>%
+  group_by(PSU_ID) %>%
+  mutate(order = match(SSU_ID, unique(SSU_ID))) %>%
+  ungroup()
+
+```
+
+Each TSU is assigned a unique site ID for traceability. The ID is constructed using the country code, PSU ID, SSU order, and TSU ID.
+
+```{r final-site-id-alternative, include=TRUE, message=FALSE, warning=FALSE}
+alt_tsus_combined_sf$site_id = paste0(ISO.code, alt_tsus_combined_sf$PSU_ID, "-", alt_tsus_combined_sf$order, "-", alt_tsus_combined_sf$TSU_ID)
+
+```
+
+Finally, alternative PSUs and TSUs are saved as shapefiles for further use.
+
+```{r export-alternative-SUs, include=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
+write_sf(replacements,paste0(results.path,"/PSUs_replacements.shp"), overwrite=TRUE)
+
+write_sf(alt_tsus_combined_sf,paste0(results.path,"/TSUs_replacements.shp"), overwrite=TRUE)
+
+```
+
+### Final outputs
+
+This section summarizes how to process and export information about PSUs, including counting PSUs per cluster, joining valid and remaining PSUs for availability analysis, and saving the final outputs as shapefiles.
+
+The number of PSUs available is counted in each cluster for the valid PSUs. Here, `valid.PSU_clusters` refers to the dataset containing valid PSUs, and the `group_by()` function ensures that counts are aggregated by each `Replace_ID` (representing unique clusters). The `summarise(Count = n())` calculates the total number of PSUs in each cluster.
+
+```{r number-psus, include=TRUE, message=FALSE, warning=FALSE}
+valid_counts <- valid.PSU_clusters %>%
+  group_by(Replace_ID) %>%
+  summarise(Count = n())
+
+```
+
+Similar operation for the remaining (alternative) PSUs, here calculates how many alternative PSUs are available in each cluster.
+
+```{r number-alternative, include=TRUE, message=FALSE, warning=FALSE}
+remaining_counts <- remaining.PSU_clusters %>%
+  group_by(cluster) %>%
+  summarise(Count = n())
+
+```
+
+The `st_join()` function combines the two datasets by matching cluster IDs. The resulting dataset includes both valid and remaining PSU counts, allowing for easy comparison. The shapefile is saved to the results folder (`results.path`).
+
+```{r join-availab, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
+availability <- st_join(valid_counts, remaining_counts, by = "cluster", suffix = c("_valid", "_remaining"))
+
+write_sf(availability,paste0(results.path,"/availability.shp"), overwrite=TRUE)
+
+```
+
+Last but not least, a single file is created to merge the shapefiles for target PSUs (`PSUs_target.shp`) and replacement PSUs (`PSUs_replacements.shp`). 
+
+```{r save-target-alternat-psus, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, results='hide', eval=FALSE}
+tar <- sf::st_read(file.path(paste0(results.path,"PSUs_target.shp")))
+repl<- sf::st_read(file.path(paste0(results.path,"PSUs_replacements.shp")))
+
+crop_PSU <- rbind(tar,repl)
+
+crop_PSU <- crop_PSU %>%
+  group_by(Replace_ID) %>%
+  summarize(geometry = st_union(geometry))
+
+write_sf(crop_PSU,paste0(results.path,"/target_repl_PSUs.shp"), overwrite=TRUE)
+
+```
+

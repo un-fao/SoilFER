@@ -67,9 +67,9 @@
     
   # Define the minimum crop percent in selected PSUs
     percent_crop <- 10
-    
-  ### FUNCTIONS ###
-  # Define Covariate Space Coverage function #
+ 
+## 3 - Define functions ===========================
+  # Define Covariate Space Coverage function
     # Clustering CSC function with fixed legacy data
     CSIS <- function(fixed, nsup, nstarts, mygrd) {
       n_fix <- nrow(fixed)
@@ -108,8 +108,35 @@
       }
       list(centers = centers_best, cluster = clusters_best)
     }
+  
+  # Function to create SSUs and TSUs
+    generate_tsu_points_within_ssu <- function(ssu, number_TSUs, index, ssu_type, crops) {
+    # Convert SSU to SpatVector for masking
+      ssu_vect <- ssu_grid_sf[index, ]
+      
+    # Clip the spatRaster to the SSU to focus the sampling within the SSU boundaries
+      clipped_lu <- crop(crops, ssu_vect)
+      
+    # Generate random points within the clipped spatRaster using sample_srs
+      sampled_points <- sample_srs(clipped_lu, nSamp = number_TSUs)  # Ensure this is compatible or modify
+      
+    # Make sure the TSUs falls within landuse areas
+      while (nrow(sampled_points) < number_TSUs) {
+        sampled_points <- spatSample(clipped_lu, size = number_TSUs)
+      }
+      
+    # Add metadata to the sampled points
+      sampled_points$PSU_ID <- selected_psu$ID
+      sampled_points$SSU_ID <- index
+      sampled_points$TSU_ID <- seq_len(nrow(sampled_points))
+      sampled_points$SSU_Type <- ssu_type
+      sampled_points$TSU_Name <- paste0(sampled_points$PSU_ID,".",sampled_points$SSU_ID,".",seq_len(nrow(sampled_points)))
+      
+      return(sampled_points)
+    }
+    
 
-## 3 - Define folders and load country and legacy data ===========================
+## 4 - Define folders and load country and legacy data ===========================
 
   # Define location of country boundaries
     country_boundaries <- file.path(paste0(shp.path,"roi_epsg_3857.shp"))
@@ -139,7 +166,7 @@
   
   ggplot(data = country_boundaries) + geom_sf() + geom_sf(data = legacy, aes(geometry = geometry))
 
-## 4 - Load and transform optional explanatory variables ============================= 
+## 5 - Load and transform optional explanatory variables ============================= 
   # Define location of non protected areas (raster)
     npa <- file.path(paste0(shp.path,"zmb_national_parks_zari_clipped_epsg_3857.shp"))
     
@@ -158,9 +185,6 @@
   # Define the field for geomorphology classes in the shape
     geomorph.classes <- "CODR"
     
-  # Define location of landuse (binary raster with 1=landuse objetive and NA = other)
-    landuse <- file.path(paste0(raster.path,"cropland_clipped_zmb_v1_epsg_3857.tif")) 
-  
   # Load non protected areas (if it exists)
     if(file.exists(npa)){
       npa <- sf::st_read(npa, quiet = FALSE) # Import Protected area
@@ -239,7 +263,7 @@
     }
     
 
-## 5 - Load and transform covariate raster data ===========================
+## 6 - Load and transform covariate raster data ===========================
 
   # Load covariate data
     cov.dat <-  list.files(raster.path, pattern = "covs_zam_clipped.tif$",  recursive = TRUE, full.names = TRUE)
@@ -339,8 +363,11 @@
     #cov.dat <- rast(paste0(results.path,"PCA_projected.tif")) #
     
 
-## 6 - Load Sampling Universe ===========================
-  # Load land use data. We use 2 landuse Spatraster objects
+## 7 - Load Sampling Universe ===========================
+  # Load land use data. 
+    # Define location of landuse (binary raster with 1=landuse objetive and NA = other)
+    landuse <- file.path(paste0(raster.path,"cropland_clipped_zmb_v1_epsg_3857.tif")) 
+    # We use 2 landuse Spatraster objects
     # A First layer, at 10 meter resolution, to define the crop area (crops), and a Second layer, at 1 ha resolution, to select PSUs (lu)
     crops <- rast(landuse) # 20 meter pixel resolution already projected to "EPSG:3857"
     crops <- crops/crops
@@ -377,7 +404,7 @@
         dplyr::select(-"INSIDE")
     }
 
-## 7 - Generate PSUs ===========================
+## 8 - Generate PSUs ===========================
 
   # Generate 2x2 km PSU vector grid within the country boundaries
     psu_grid <- st_make_grid(country_boundaries, cellsize = c(psu_size, psu_size), square = TRUE)
@@ -391,7 +418,7 @@
     # If you already did the saved the process, uncomment and use the following line instead of those above
      psu_grid <- sf::st_read(file.path(paste0(results.path,"../grid2k.shp"))) 
      
-## 8 - Select PSUs with crops above a certain percent ===========================
+## 9 - Select PSUs with crops above a certain percent ===========================
      
   # Extract values of lu for cells that intersect with psu_grid
     extracted_values <- terra::extract(lu, psu_grid)
@@ -423,7 +450,7 @@
   # Transfer ID to the rasters
     template <- rasterize(vect(psu_grid), template, field = "ID")
      
-## 9 - Rasterize PSUs ===========================
+## 10 - Rasterize PSUs ===========================
      
   # Crop covariates to the sampling universe
     cov.dat <- crop(cov.dat, psu_grid, mask=TRUE, overwrite=TRUE)
@@ -431,7 +458,7 @@
   # Resample covariates to the definition of PSUs 
     PSU.r <- resample(cov.dat, template)
      
-## 10 - Determine PSUs by Covariate Space Coverage ===========================
+## 11 - Determine PSUs by Covariate Space Coverage ===========================
      
   ## Prepare function parameters
   # Convert the raster stack information at PSU aggregated level to a dataframe with coordinates
@@ -534,7 +561,7 @@
     
     rm(new,dmin,MSSSD)
      
-## 11 - Plot PSUs over covariate PC1 and PC2 information ===========================
+## 12 - Plot PSUs over covariate PC1 and PC2 information ===========================
      
    #  PSUs environmental representation over PC1 and PC2 of covariates
     ggplot(PSU.df) +
@@ -545,33 +572,6 @@
       scale_y_continuous(name = "PC2") +
       theme(legend.position = "none") +
       ggtitle("Distribution of sampling PSUs over the space of environmental covariates") 
-     
-## 12 - Function to create SSUs and TSUs ===========================
-     
-    generate_tsu_points_within_ssu <- function(ssu, number_TSUs, index, ssu_type, crops) {
-     # Convert SSU to SpatVector for masking
-      ssu_vect <- ssu_grid_sf[index, ]
-      
-     # Clip the spatRaster to the SSU to focus the sampling within the SSU boundaries
-      clipped_lu <- crop(crops, ssu_vect)
-      
-     # Generate random points within the clipped spatRaster using sample_srs
-      sampled_points <- sample_srs(clipped_lu, nSamp = number_TSUs)  # Ensure this is compatible or modify
-      
-     # Make sure the TSUs falls within landuse areas
-      while (nrow(sampled_points) < number_TSUs) {
-        sampled_points <- spatSample(clipped_lu, size = number_TSUs)
-      }
-      
-     # Add metadata to the sampled points
-      sampled_points$PSU_ID <- selected_psu$ID
-      sampled_points$SSU_ID <- index
-      sampled_points$TSU_ID <- seq_len(nrow(sampled_points))
-      sampled_points$SSU_Type <- ssu_type
-      sampled_points$TSU_Name <- paste0(sampled_points$PSU_ID,".",sampled_points$SSU_ID,".",seq_len(nrow(sampled_points)))
-      
-      return(sampled_points)
-    }
      
 ## 13 - Compute SSUs and TSUs ===========================
      
@@ -728,7 +728,7 @@
     write_sf(all.PSU_clusters,paste0(results.path,"/PSU_pattern_cl.shp"), overwrite=TRUE)
     writeRaster(dfr, paste0(results.path,"/clusters.tif"), overwrite=TRUE)
     
-## 16 -Calculate alternative PSUs ===========================
+## 16 - Calculate alternative PSUs ===========================
      
   # Calculate replacement PSUs
    # Step 1: Exclude elements present in valid.PSU_clusters from all.PSU_clusters
@@ -755,7 +755,7 @@
    # replacements contains a replacement for each unique cluster in valid.PSU_clusters
     replacements <- remaining.PSU_clusters[sampled_indices, ]
      
-## 17 -  Determine SSUs and TSUs for alternative PSUs=============================
+## 17 - Determine SSUs and TSUs for alternative PSUs=============================
      
   # Initialize a list to store TSUs for all PSUs
     alt_psus_tsus_sf <- list()
@@ -883,7 +883,7 @@
   # Create final site ID
     alt_tsus_combined_sf$site_id = paste0(ISO.code, alt_tsus_combined_sf$PSU_ID, "-", alt_tsus_combined_sf$order, "-", alt_tsus_combined_sf$TSU_ID)
      
-## 19 - Plot and export SSUs and TSUs ===========================
+## 19 - Export SSUs and TSUs ===========================
      
   # Export to shapefile
     write_sf(replacements,paste0(results.path,"/PSUs_replacements.shp"), overwrite=TRUE)
