@@ -373,7 +373,8 @@ Finally, the `ggplot2` package is used to visualize the country boundaries and o
 
 ggplot(data = country_boundaries) + 
   geom_sf() + 
-  geom_sf(data = legacy, aes(geometry = geometry))
+  geom_sf(data = legacy, aes(geometry = geometry)) +
+  theme_minimal()
 
 ```
 
