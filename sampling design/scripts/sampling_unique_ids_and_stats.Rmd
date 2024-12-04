@@ -1,0 +1,529 @@
+---
+output:
+  html_document:
+    toc: true
+    toc_float: false
+    number_sections: true
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "D:/FAO/github/SoilFER/sampling design")
+
+```
+
+
+## Sampling unique IDs and basic statistics
+
+This code is designed for users with a basic understanding of R programming, and provides a comprehensive guide to generating unique site IDs for the previously created sampling design, as well as an overview of the point distribution.  
+
+Ensure you have the `tinytex`, `knitr`, `rmarkdown`, and `rstudioapi` R packages installed to successfully run and render R Markdown documents before running this script. Additionally, install `tinytex::install_tinytex()` by running `tinytex::install_tinytex()` to enable LaTeX support for PDF generation. 
+
+### Setting up the environment and loading libraries
+
+First, set the working directory to the location of your R script. This ensures that all paths in the script are relative to the script's location.
+
+```{r set-working-directory, include=TRUE, warning=FALSE}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+setwd("../") # Move wd down to the main folder
+getwd()
+
+```
+
+### Install required libraries
+
+The script uses several R libraries, each serving a specific purpose. Below is a quick summary of the key functions of these libraries:
+
+```{r table-r-packages, include=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# Load the knitr package for table creation
+require(knitr)
+
+# Create a data frame with the packages and their purposes
+packages_table <- data.frame(
+  Package = c(
+    "sp", "terra", "sf", "data.table", "dplyr", "ggplot2", "RColorBrewer"
+  ),
+  Purpose = c(
+    "Handling spatial data and performing geographic operations.",
+    "Working with raster and vector spatial data, including transformations and analyses.",
+    "Modern and efficient library for handling vector spatial data.",
+    "Efficient data manipulation and aggregation for large datasets.",
+    "Data manipulation and transformation.",
+    "Data visualization using the grammar of graphics.",
+    "Providing color palettes for visualizations."
+  )
+)
+
+# Generate a markdown table using the knitr package
+knitr::kable(packages_table, format = "markdown", caption = "Summary of required R libraries and their purposes")
+
+```
+
+First step is to load all required R libraries. An alternative and beginner-friendly way of install R packages using RStudio is through the **Packages** tab in RStudio. First of all, locate this tab in the bottom-right pane of RStudio and click on it. Then, click the *Install* button at the top of the tab. In the dialog box that appears, type the name of the package (e.g., `data.table`) in the text field. Make sure that *Install dependencies* box is checked, and finally, click *Install* to download and install the package.
+
+```{r loading-r-packages, include=TRUE, warning=FALSE, message=FALSE}
+
+packages <- c("sp", "terra", "sf", "data.table", "dplyr", "ggplot2", "RColorBrewer")
+
+invisible(lapply(packages, library, character.only = TRUE))
+
+rm(packages)
+
+```
+
+### Define variables, and parameters
+
+Several variables and parameters must be defined to establish a consistent framework for the script. 
+
+The `ISO.code` variable is used to define the unique [Alpha-3 ISO code](https://www.iso.org/obp/ui/#search) of the country of interest. This standard ensures consistency when naming variables and file paths throughout the script. 
+
+```{r iso-code, include=TRUE, warning=FALSE, message=FALSE}
+
+ISO.code <- "ZMB" 
+
+```
+><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> In this example, **"ZMB"** is used as the ISO code for Zambia. </p>
+
+The `epsg` variable specifies the coordinate reference system used for spatial data. EPSG codes are globally recognized standards for geospatial datasets. If you do not have this information, you can search [here](https://epsg.io/).
+
+```{r epsg-system, include=TRUE, warning=FALSE, message=FALSE}
+
+epsg <- "EPSG:3857"
+
+```
+
+This section sets the file paths for accessing data such as raster files, shapefiles, and other resources. Additionally, it ensures the creation of a results folder for storing processed files related to the specified land use. Organizing file paths ensures that all resources and results are systematically stored and accessed.
+
+```{r path-to-folders, include=TRUE, warning=FALSE, message=FALSE}
+
+# Define folder location
+folder <- "data/results/"
+
+# Create folder location for all data
+folder_all <- paste0(folder,"all/")
+
+# check if folder_all directory exists if not create it
+if (!file.exists(folder_all)){
+  # create a new sub directory inside the main path
+  dir.create(folder_all)
+}
+
+```
+
+### Importing and merging the sampling unit files
+
+After defining the variables and parameters, the next step is to import the shapefiles containing the Primary Sampling Units (PSUs) and Tertiary Sampling Units (TSUs) for one or more land-use types. This procedure enables users to work with the sampling units associated with different land-use categories such as croplands, grasslands, or forests.
+
+If working with multiple land-use types, replicate the code lines for importing files and ensure you correctly specify the file paths and object names for each land-use type. Below is an example for croplands: 
+
+```{r importing-target-su, include=TRUE, warning=FALSE, message=FALSE}
+# PSUs
+psus_target_croplands <- sf::st_read(paste0(folder, "crops/PSUs_target.shp"), quiet = T)
+psus_target_croplands$lulc <- "C"
+psus_target_croplands
+
+# TSUs
+tsus_target_croplands <- sf::st_read(paste0(folder, "crops/TSUs_target.shp"), quiet = T)
+tsus_target_croplands$lulc <- "C"
+tsus_target_croplands
+```
+><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> The `lulc` field is used to assign a unique label for the land-use type (e.g., "C" for croplands). Ensure consistency in naming across your dataset. </p>
+
+If you are working with multiple land-use types, you will need to merge the sampling unit files (PSUs and TSUs) from all categories. This step consolidates the data for easier processing and visualization. However, if you only have one land-use type, this step is not required.
+
+```{r merging-target-su, include=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+# PSUs 
+psus_target_list <- list(psus_target_croplands, psus_target_grasslands, psus_target_forests)
+psus_target <- sf::st_as_sf(data.table::rbindlist(psus_target_list))
+
+# TSUs 
+tsus_target_list <- list(tsus_target_croplands, tsus_target_grasslands, tsus_target_forests)
+tsus_target <- sf::st_as_sf(data.table::rbindlist(tsus_target_list))
+```
+><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> When merging files, ensure that the field names and data structure are consistent across all shapefiles. Otherwise, the merge may fail or produce incorrect results. </p>
+
+The same process applied steps before for the target sampling units applies to alternative or replacement sampling units. 
+
+```{r importing-replacement-su, include=TRUE, warning=FALSE, message=FALSE}
+# PSUs
+psus_repl_croplands <- sf::st_read(paste0(folder, "crops/PSUs_replacements.shp"), quiet = T)
+psus_repl_croplands$lulc <- "C"
+
+# TSUs
+tsus_repl_croplands <- sf::st_read(paste0(folder, "crops/TSUs_replacements.shp"), quiet = T)
+tsus_repl_croplands$lulc <- "C"
+
+```
+
+If working with multiple land-use types, merge the replacement files as shown below:
+
+```{r merging-replacement-su, include=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+# PSUs 
+psus_repl_list <- list(psus_repl_croplands, psus_repl_grasslands, psus_repl_forests)
+psus_repl <- sf::st_as_sf(data.table::rbindlist(psus_repl_list))
+
+# TSUs 
+tsus_repl_list <- list(tsus_repl_croplands, tsus_repl_grasslands, tsus_repl_forests)
+tsus_repl <- sf::st_as_sf(data.table::rbindlist(tsus_repl_list))
+
+```
+
+```{r fig-target-sus, fig.align='center', message=FALSE, echo=TRUE}
+ggplot() +
+  geom_sf(data = psus_target_croplands, color = "#101010", fill = NA, lwd = 0.8) +
+  geom_sf(data = tsus_target_croplands, aes(), color = "#D81B60", size = 0.5, shape = 19, lwd = 0.7) +
+  labs(title = "Target Primary Sampling Units",
+       x = "Longitude",
+       y = "Latitude",
+       fill = "PC1") +
+  theme_minimal()
+```
+><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Use the individual objects (`psus_target_croplands` and `tsus_target_croplands`) for visualization when working with a single land-use type. For multiple land-use types, replace these with the merged objects (`psus_target` and `tsus_target`) </p>
+
+```{r fig-replacement-sus, fig.align='center', message=FALSE, echo=TRUE}
+ggplot() +
+  geom_sf(data = psus_repl_croplands, color = "#101010", fill = NA, lwd = 0.8) +
+  geom_sf(data = tsus_repl_croplands, aes(), color = "#D81B60", size = 0.5, shape = 19, lwd = 0.7) +
+  labs(title = "Alternative Primary Sampling Units",
+       x = "Longitude",
+       y = "Latitude",
+       fill = "PC1") +
+  theme_minimal()
+
+```
+><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Use the individual objects (`psus_repl_croplands` and `tsus_repl_croplands`) for visualization when working with a single land-use type. For multiple land-use types, replace these with the merged objects (`psus_repl` and `tsus_repl`) </p>
+
+### Assign unique site ID
+
+This section describes the step-by-step process for creating unique IDs for each site or so called TSU. These IDs ensure consistency and traceability throughout the sampling process.
+
+To begin, we examine the first few entries in the `psus_target_croplands` object to understand its structure. This dataset represents PSUs selected for sampling in cropland areas. If multiple land-use types are involved, use the merged `psus_target` object instead.
+```{r head-psus, include=TRUE, warning=FALSE, message=FALSE}
+head(psus_target_croplands, 5)
+
+```
+
+Here, a key ID (`PSU_R_LULC_ID`) is generated by combining the PSU's `Replace_ID` and its land-use type (`lulc`).
+
+```{r init-id-psus, include=TRUE, warning=FALSE, message=FALSE}
+psus_target_croplands$PSU_R_LULC_ID <- paste0(psus_target_croplands$Replace_ID, "-", psus_target_croplands$lulc)
+head(psus_target_croplands, 5)
+```
+
+A sequential unique ID is assigned for each PSU based on the total number of PSUs in the country. The IDs are saved under a field with the country ISO code (`ZMB_PSU_ID`).
+
+```{r refined-id-psus, include=TRUE, warning=FALSE, message=FALSE}
+psus_target_croplands[[paste0(ISO.code,"_PSU_ID")]] = 1:nrow(psus_target_croplands)
+
+psus_target_croplands <- psus_target_croplands %>%
+  select(ID, Replace_ID, lulc, PSU_R_LULC_ID, all_of(paste0(ISO.code, "_PSU_ID")), everything())
+
+head(psus_target_croplands, 5)
+```
+
+We repeat the same procedure mentioned above for target PSUs on the replacement/alternative PSUs stored in `psus_repl_croplands`. This ensures replacements also have identical key identifiers as the target PSUs.
+
+```{r head-repl-psus, include=TRUE, warning=FALSE, message=FALSE}
+head(psus_repl_croplands, 5)
+
+```
+
+Key IDs are generated for alternative PSUs based on their `Replace_ID` and land-use type (`lulc`).
+
+```{r init-id-repl-psus, include=TRUE, warning=FALSE, message=FALSE}
+psus_repl_croplands$PSU_R_LULC_ID <- paste0(psus_repl_croplands$Replace_ID, "-", psus_repl_croplands$lulc)
+head(psus_repl_croplands, 5)
+
+```
+
+Now, alternative PSUs are assigned IDs sequentially, starting from the last ID used for the target PSUs (`start_id`). 
+
+```{r refined-id-repl-psus, include=TRUE, warning=FALSE, message=FALSE}
+start_id <- nrow(psus_target_croplands) + 1 # Set where the next id has to start from.
+
+psus_repl_croplands[[paste0(ISO.code,"_PSU_ID")]] = start_id:(start_id + nrow(psus_repl_croplands) - 1)
+
+psus_repl_croplands <- psus_repl_croplands %>%
+  select(ID, Replace_ID, lulc, PSU_R_LULC_ID, all_of(paste0(ISO.code, "_PSU_ID")), everything())
+
+head(psus_repl_croplands, 5)
+```
+
+The purpose of this step is to establish a connection between the target PSUs and their replacements using a matching index. The key identifier (`PSU_R_LULC_ID`) serves as the basis for matching. 
+
+If a target PSU does not have a matching replacement PSU with the same spatial variability, the index will contain `NA` for that entry.
+
+```{r index-link-target-repl-psus, include=TRUE, warning=FALSE, message=FALSE}
+head(psus_target_croplands, 4)
+
+head(psus_repl_croplands, 4)
+
+index <- match(psus_target_croplands$PSU_R_LULC_ID, psus_repl_croplands$PSU_R_LULC_ID)
+index
+
+```
+
+The replacement PSUs are assigned to their corresponding target PSUs using the index. A new field, `PSU_R_ID`, is added to the `psus_target_croplands` dataset, ensuring traceability. The resulting dataset includes all necessary information to identify relationships between target and replacement PSUs.
+
+```{r retrieve-link-target-repl-psus, include=TRUE, warning=FALSE, message=FALSE}
+psus_target_croplands[["PSU_R_ID"]] <- psus_repl_croplands[[paste0(ISO.code,"_PSU_ID")]][index]
+
+psus_target_croplands <- psus_target_croplands %>%
+  select(ID, Replace_ID, lulc, PSU_R_LULC_ID, PSU_R_ID, all_of(paste0(ISO.code, "_PSU_ID")), everything())
+
+head(psus_target_croplands, 5)
+
+```
+
+**Create unique IDs for each site at TSU level**
+
+To maintain consistency between PSUs and TSUs, a unique key ID (`PSU_T_LULC_ID`) is created. This ID combines the PSU ID and land-use (`lulc`) information. The key ensures each PSU can be uniquely linked to its associated TSUs. 
+
+```{r key-id-psu-tsu-target, include=TRUE, warning=FALSE, message=FALSE}
+psus_target_croplands$PSU_T_LULC_ID <- paste0(psus_target_croplands$ID, "-", psus_target_croplands$lulc)
+
+psus_target_croplands <- psus_target_croplands %>%
+  select(ID, Replace_ID, lulc, PSU_R_LULC_ID, PSU_T_LULC_ID, PSU_R_ID, all_of(paste0(ISO.code, "_PSU_ID")), everything())
+
+head(psus_target_croplands, 5)
+
+tsus_target_croplands$PSU_T_LULC_ID <- paste0(tsus_target_croplands$PSU_ID, "-", tsus_target_croplands$lulc)
+
+head(tsus_target_croplands, 5)
+
+```
+
+A similar matching process as described steps before is applied between PSUs and TSUs. The key ID (`PSU_T_LULC_ID`) is used to establish a connection.
+
+```{r index-id-target-psu-tsu, include=TRUE, warning=FALSE, message=FALSE}
+index <- match(tsus_target_croplands$PSU_T_LULC_ID, psus_target_croplands$PSU_T_LULC_ID)
+
+```
+
+The alternative PSU IDs (`PSU_R_ID`) and other necessary attributes are transferred from the `psus_target_croplands` dataset to the `tsus_target_croplands` dataset using the index.
+
+```{r link-id-target-psu-tsu, include=TRUE, warning=FALSE, message=FALSE}
+tsus_target_croplands[[paste0(ISO.code,"_PSU_ID")]] <- psus_target_croplands[[paste0(ISO.code,"_PSU_ID")]][index]
+
+tsus_target_croplands[["PSU_R_ID"]] <- psus_target_croplands[["PSU_R_ID"]][index]
+```
+
+Only essential fields are retained to streamline the TSU dataset. This ensures the TSU dataset is clean and optimized for further analysis. 
+
+```{r adjust-id-target-psu-tsu, include=TRUE, warning=FALSE, message=FALSE}
+tsus_target_croplands <- tsus_target_croplands %>%
+  select(all_of(paste0(ISO.code, "_PSU_ID")), PSU_Type, order, SSU_Type, TSU_ID, TSU_Type, site_id, lulc, PSU_R_ID)
+
+head(tsus_target_croplands, 5)
+```
+
+For consistency, column names are standardized. The PSU ID field (`ZMB_PSU_ID`) is renamed to `PSU_ID`, and the `order` field is renamed to `SSU_ID`.
+
+```{r change-names-target-tsu, include=TRUE, warning=FALSE, message=FALSE}
+names(tsus_target_croplands) <- gsub(paste0(ISO.code, "_PSU_ID"), "PSU_ID", names(tsus_target_croplands))
+names(tsus_target_croplands) <- gsub("order", "SSU_ID", names(tsus_target_croplands))
+
+head(tsus_target_croplands, 5)
+```
+
+Last but not least, the final step is to generate a unique identifier (`site_id`) for each TSU. This ID incorporates the country code, PSU ID, SSU ID, TSU ID, and LULC.
+
+```{r final-unique-id-target-tsu, include=TRUE, warning=FALSE, message=FALSE}
+tsus_target_croplands$site_id = paste0(ISO.code, sprintf("%04d", tsus_target_croplands$PSU_ID), "-", tsus_target_croplands$SSU_ID, "-", tsus_target_croplands$TSU_ID, tsus_target_croplands$lulc) 
+
+head(tsus_target_croplands, 5)
+```
+
+For the alternative TSUs, users an apply the same procedure as described for target TSUs. Here, we are simply providing the code for future use.
+
+```{r tsus-id-repl-allinone, include=TRUE, warning=FALSE, message=FALSE}
+psus_repl_croplands$PSU_T_LULC_ID <- paste0(psus_repl_croplands$ID, "-", psus_repl_croplands$lulc)
+
+psus_repl_croplands <- psus_repl_croplands %>%
+  select(ID, Replace_ID, lulc, PSU_R_LULC_ID, PSU_T_LULC_ID, all_of(paste0(ISO.code, "_PSU_ID")), everything())
+
+tsus_repl_croplands$PSU_T_LULC_ID <- paste0(tsus_repl_croplands$PSU_ID, "-", tsus_repl_croplands$lulc)
+
+index <- match(tsus_repl_croplands$PSU_T_LULC_ID, psus_repl_croplands$PSU_T_LULC_ID)
+
+tsus_repl_croplands[[paste0(ISO.code,"_PSU_ID")]] <- psus_repl_croplands[[paste0(ISO.code,"_PSU_ID")]][index]
+
+tsus_repl_croplands[["PSU_T_ID"]] <- psus_target_croplands[[paste0(ISO.code, "_PSU_ID")]][match(tsus_repl_croplands[[paste0(ISO.code,"_PSU_ID")]], psus_target_croplands$PSU_R_ID)]
+
+tsus_repl_croplands <- tsus_repl_croplands %>%
+  select(all_of(paste0(ISO.code, "_PSU_ID")), PSU_Type, order, SSU_Type, TSU_ID, TSU_Type, site_id, lulc, PSU_T_ID)
+
+names(tsus_repl_croplands) <- gsub(paste0(ISO.code, "_PSU_ID"), "PSU_ID", names(tsus_repl_croplands))
+names(tsus_repl_croplands) <- gsub("order", "SSU_ID", names(tsus_repl_croplands))
+
+tsus_repl_croplands$site_id = paste0(ISO.code, sprintf("%04d", tsus_repl_croplands$PSU_ID), "-", tsus_repl_croplands$SSU_ID, "-", tsus_repl_croplands$TSU_ID, tsus_repl_croplands$lulc)
+
+head(tsus_repl_croplands, 5)
+```
+
+### Exporting the outputs
+
+The final processed data for the sampling units is exported using the code below, ensuring that the results are stored in a structured and standardized manner.
+
+```{r exporting-outputs, include=TRUE, warning=FALSE, message=FALSE}
+# Target PSUs
+psus_target_croplands <- psus_target_croplands %>%
+  select(all_of(paste0(ISO.code, "_PSU_ID")), PSU_R_ID, lulc)
+
+names(psus_target_croplands) <- gsub(paste0(ISO.code, "_PSU_ID"), "PSU_ID", names(psus_target_croplands))
+names(psus_target_croplands) <- gsub("PSU_R_ID", "Replace_ID", names(psus_target_croplands))
+
+sf::write_sf(psus_target_croplands, paste0(folder_all, "all_psus_target.shp"), overwrite = T)
+
+# Alternative PSUs
+psus_repl_croplands <- psus_repl_croplands %>%
+  select(all_of(paste0(ISO.code, "_PSU_ID")), lulc)
+
+names(psus_repl_croplands) <- gsub(paste0(ISO.code, "_PSU_ID"), "Replace_ID", names(psus_repl_croplands))
+
+sf::write_sf(psus_repl_croplands, paste0(folder_all, "all_psus_replacements.shp"), overwrite = T)
+
+# Target TSUs
+names(tsus_target_croplands) <- gsub("PSU_R_ID", "Replace_ID", names(tsus_target_croplands))
+
+sf::write_sf(tsus_target_croplands, paste0(folder_all, "all_tsus_target.shp"), overwrite = T)
+
+# Alternative TSUs
+names(tsus_repl_croplands) <- gsub("PSU_T_ID", "PSU_Target_ID", names(tsus_repl_croplands))
+
+sf::write_sf(tsus_repl_croplands, paste0(folder_all, "all_tsus_replacements.shp"), overwrite = T)
+
+```
+
+## Displaying the sampling distribution - Simplistic analysis
+
+First of all, the country's administrative boundaries must be uploaded. ADM1 represents the first level of subnational boundaries, which includes states or provinces. This is the information required here.
+
+```{r loading-country-adm1, include=TRUE, warning=FALSE, message=FALSE}
+country_boundaries <- sf::st_read(paste0(folder,"../shapes/ZMB_adm1.shp"), quiet=TRUE)
+country_boundaries
+
+# Define the column with the country and province names
+country_boundaries$country <- ISO.code
+country_boundaries$province <- country_boundaries$NAME_1
+
+if(sf::st_crs(country_boundaries)$epsg !=epsg){
+  country_boundaries <- country_boundaries %>%
+    st_as_sf() %>% sf::st_transform(crs=epsg)
+}
+
+ncolors <- length(unique(country_boundaries$province))
+
+```
+
+
+```{r fig-country-boundaries-adm1, fig.align='center', message=FALSE, echo=TRUE}
+ggplot() +
+  geom_sf(data = country_boundaries, aes(fill = as.factor(province)), color = NA) +
+  geom_sf_text(data = country_boundaries, aes(label = province), size = 3, color = "black", fontface = "bold") +
+  scale_fill_manual(values = colorRampPalette(c("#F2DC96", "#A99F33"))(length(unique(country_boundaries$province)))) +
+  labs(title = "Country Boundaries - Provinces/States",
+       x = "Longitude",
+       y = "Latitude",
+       fill = "Provinces") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+Selecting and organizing target TSUs for analysis. In our example, we are working with two provinces and one type of land-use. However, for projects like SoilFER, which operate on a national scale, the code can easily be scaled to more provinces and land-use categories.
+
+`filter()` function filters the dataset to include only TSUs marked as Target for both `SSU_Type` and `TSU_Type`.
+`st_join()` function joins the TSUs with the `country_boundaries` shapefile to add geographic context.
+
+```{r selecting-df-tsus-country, include=TRUE, warning=FALSE, message=FALSE}
+tsus_uniq_sites <- dplyr::filter(tsus_target_croplands, SSU_Type == "Target" & TSU_Type == "Target")
+head(tsus_uniq_sites, 5)
+
+tsus_uniq_sites <- sf::st_join(tsus_uniq_sites, country_boundaries)
+tsus_uniq_sites <- tsus_uniq_sites %>% 
+  select(c(site_id, country, province, lulc, geometry))
+
+# Converting shapefile to DF
+tsus_uniq_sites_df <- as.data.frame(tsus_uniq_sites)
+
+sites_distribution <- tsus_uniq_sites_df %>%
+  group_by(country, lulc) %>%
+  summarise(Sites = n())
+
+```
+```{r fig-graph-site-distribution-lulc, fig.align='center', message=FALSE, echo=TRUE}
+custom_colors <- colorRampPalette(brewer.pal(11, "BrBG"))(ncolors)
+
+#jpeg(paste0(folder,"/final_site_distribution.jpeg"), width = 16, height = 12, units = 'in', res = 300)
+ggplot(sites_distribution, aes(x = lulc, y = Sites, fill = lulc)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +  
+  geom_text(aes(label = Sites),  
+            position = position_dodge(width = 0.7), 
+            vjust = -0.5, size = 3) +  
+  labs(
+    title = "Site Distribution per land-use",
+    x = "LULC",
+    y = "Number of Sites",
+    fill = "LULC"
+  ) +
+  scale_x_discrete(labels = c("C" = "Cropland", "F" = "Forest", "G" = "Grassland")) +  # Rename x-axis labels
+  scale_fill_manual(values = custom_colors, labels = c("C" = "Cropland", "F" = "Forest", "G" = "Grassland")) +  # Custom color palette
+  ylim(0, max(sites_distribution$Sites) * 1.2) +  
+  theme_minimal() +  
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  
+    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 14),  
+    axis.text.y = element_text(size = 14),  
+    axis.title.x = element_text(size = 14, face = "bold"),  
+    axis.title.y = element_text(size = 14, face = "bold"),  
+    legend.position = "top",  
+    legend.title = element_text(size = 12, face = "bold"),  
+    legend.text = element_text(size = 12),  
+    panel.grid.major = element_line(color = "grey80", linetype = "dotted"),  
+    panel.grid.minor = element_blank()  
+  )
+#dev.off()
+
+
+```
+```{r fig-graph-site-distribution-province, fig.align='center', message=FALSE, echo=TRUE}
+tsus_uniq_sites_df <- as.data.frame(tsus_uniq_sites)
+sites_distribution <- tsus_uniq_sites_df %>%
+  group_by(province, lulc) %>%
+  summarise(Sites = n())
+
+# Graphs
+custom_colors <- colorRampPalette(brewer.pal(11, "Spectral"))(ncolors)
+
+#jpeg(paste0(folder,"/final_site_distribution_province.jpeg"), width = 16, height = 12, units = 'in', res = 300)
+ggplot(sites_distribution, aes(x = lulc, y = Sites, fill = province)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +  
+  geom_text(aes(label = Sites),  
+            position = position_dodge(width = 0.7), 
+            vjust = -0.5, size = 3) +  
+  labs(
+    title = "Site Distribution per province/state",
+    x = "LULC",
+    y = "Number of Sites",
+    fill = "Province"
+  ) +
+  scale_x_discrete(labels = c("C" = "Cropland", "F" = "Forest", "G" = "Grassland")) +  # Rename x-axis labels
+  scale_fill_manual(values = custom_colors) +  # Custom color palette
+  ylim(0, max(sites_distribution$Sites) * 1.2) +  
+  theme_minimal() +  
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  
+    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 14),  
+    axis.text.y = element_text(size = 14),  
+    axis.title.x = element_text(size = 14, face = "bold"),  
+    axis.title.y = element_text(size = 14, face = "bold"),  
+    legend.position = "top",  
+    legend.title = element_text(size = 12, face = "bold"),  
+    legend.text = element_text(size = 12),  
+    panel.grid.major = element_line(color = "grey80", linetype = "dotted"),  
+    panel.grid.minor = element_blank()  
+  )
+#dev.off()
+
+
+```
