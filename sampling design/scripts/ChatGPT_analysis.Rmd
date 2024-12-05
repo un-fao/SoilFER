@@ -584,3 +584,6 @@ The CSV file has been created and can be downloaded using the link below:
 # **Save the result**
 
 **Download the csv file and save it in the cluster_interpretation folder** as ```Custer_analysis_from_ChatGPT.csv```
+
+
+[Link to the Chat](https://chatgpt.com/share/6751ada1-e56c-8006-98ce-d1145be7d37e)
