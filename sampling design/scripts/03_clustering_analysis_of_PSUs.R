@@ -42,7 +42,7 @@ cov.dat <- rast(file.path(raster.path, "/covs_zam_clipped.tif"))
 psus <- st_read("data/results/all/all_psus_target.shp")
 covs <- mask(cov.dat, psus)
 
-plot(cov.dat)
+# plot(cov.dat)
 # Create a random sample of points within the raster extent
 set.seed(123)  # For reproducibility
 dat <- spatSample(covs, size = 30000, method = "random", replace = FALSE, as.points = FALSE, na.rm = TRUE)
@@ -82,7 +82,10 @@ vars <- c(variables_bajas_vif, "bio13", "bio14", "ndvi_060708_250m_mean", "ndvi_
 ## 4 - Extracting Summary Statistics ============================================
 # Extract median values for selected variables
 su.cov.db.me <- terra::extract(cov.dat[[vars]], psus, fun = median, na.rm = TRUE, ID = FALSE)
-names(su.cov.db.me) <- paste0("me_", names(su.cov.db.me))
+
+# summary of variables for ChatGPT
+summary(su.cov.db.me)
+# names(su.cov.db.me) <- paste0("me_", names(su.cov.db.me))
 
 # Combine extracted data with PSU IDs
 su.cov.db <- cbind(psus["PSU_ID"], su.cov.db.me)
@@ -114,12 +117,14 @@ su.cov.db.df_clean <- su.cov.db.df_clean[, !(names(su.cov.db.df_clean) %in% cols
 # Calculate distance matrix and perform hierarchical clustering
 dist_matrix <- dist(su.db.scaled)
 hclust_result <- hclust(dist_matrix, method = "ward.D2")
-clusters <- cutree(hclust_result, k = 5) # IMPORTANT: define the number of clusters
+clusters <- cutree(hclust_result, k = 3) # IMPORTANT: k defines the number of clusters
 
 # Add cluster information to the cleaned data frame
 su.cov.db.df_clean$cluster <- clusters
 su.cov.db.df_clean <- su.cov.db.df_clean %>%
   dplyr::select(cluster, everything())
+
+write_csv(su.cov.db.df_clean, "data/cluster_interpretation/su.cov.db.df_clean.csv")
 
 ####################################################################
 ## 7 - Summary Statistics by Cluster ==========================================
@@ -127,7 +132,7 @@ su.cov.db.df_clean <- su.cov.db.df_clean %>%
 test <- su.cov.db.df_clean %>%
   group_by(cluster) %>%
   summarise(across(everything(), list(mean = mean, sd = sd), na.rm = TRUE))
-test[-1] <- round(test[-1], 2)
+test[-1] <- round(test[-1], 3)
 test <- test[,-2:-3]
 
 # Save summary statistics to CSV
