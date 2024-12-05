@@ -14,3 +14,6 @@
 ## Folders
 
 The **sampling design folder** includes scripts for implementing soil sampling designs applicable to any country within the SoilFER project framework. To support training sessions, the folder also provides a practical case study based in Zambia, Africa.
+
+## CRediT authorship
+TBA
