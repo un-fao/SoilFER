@@ -24,7 +24,7 @@ The file named **`covs_zam_clipped.tif`** contains the environmental variables r
 
 Soil climate refers to the Normalized Soil Moisture (NSM) factor, which relates to soil water content, precipitation, and evapotranspiration. These factors are essential for assessing soil moisture regimes, soil water availability, and soil-climate interactions.
 
-Environmental variables related to soil climate can be generated using the R code (CITE HERE). The file named **`newhall_zam_clipped.tif`** contains these variables, so there is no need to regenerate them here.
+Environmental variables related to soil climate can be generated using the R code (CITE HERE). The file named **`newhall_zam_clipped.tif`** contains these variables, so there is no need to generate them here.
 
 ### Land Use - Crops
 
