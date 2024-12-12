@@ -24,11 +24,15 @@ The file named **`covs_zam_clipped.tif`** contains the environmental variables r
 
 Soil climate refers to the Normalized Soil Moisture (NSM) factor, which relates to soil water content, precipitation, and evapotranspiration. These factors are essential for assessing soil moisture regimes, soil water availability, and soil-climate interactions.
 
-Environmental variables related to soil climate can be generated using the R code (CITE HERE). The file named **`newhall_zam_clipped.tif`** contains these variables, so there is no need to regenerate them here.
+Environmental variables related to soil climate can be generated using the codes in Google Earth Engine (GEE) [(gee_climate_vars)](./scripts/GEE) and R [(climate_vars.R)](./scripts). 
+
+First of all, create a GEE account and upload the GEE code. Select the desired years, run the code, and upload the resulting files into the [raster folder](./data/rasters). Next, open the R code file [climate_vars.R](./scripts). Follow the provided instructions to calculate the traditional soil climate simulation model known as the [Newhall Simulation Model](https://github.com/ncss-tech/jNSMR).
+
+The file named **`newhall_zam_clipped.tif`** contains these variables, so there is no need to generate them here.
 
 ### Land Use - Crops
 
-Land cover data at 10 m or 100 m resolution can be retrieved using the [Hand-in-Hand Geospatial Platform](https://data.apps.fao.org/?lang=en) and Copernicus products via the `gee.txt` code.
+Land cover data at 10 m or 100 m resolution can be retrieved using the [Hand-in-Hand Geospatial Platform](https://data.apps.fao.org/?lang=en) and Copernicus products via the [`gee.txt` code](./data/rasters).
 
 The crop layer consists of a single raster delineating the location of crops in the region of interest. This layer is named **`cropland_clipped_zmb_v1_epsg_3857.tif`**.
 

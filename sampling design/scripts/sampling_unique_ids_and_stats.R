@@ -22,7 +22,7 @@ ISO.code <- "ZMB"
 epsg <- "EPSG:3857"
 
 # Define folder location
-folder <- "results/"
+folder <- "data/results/"
 
 # Create folder location for all data
 folder_all <- paste0(folder,"all/")
