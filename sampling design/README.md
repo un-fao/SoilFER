@@ -24,8 +24,8 @@ The file named **`covs_zam_clipped.tif`** contains the environmental variables r
 
 Soil climate refers to the Normalized Soil Moisture (NSM) factor, which relates to soil water content, precipitation, and evapotranspiration. These factors are essential for assessing soil moisture regimes, soil water availability, and soil-climate interactions.
 
-Environmental variables related to soil climate can be generated using the Google Earth Engine (GEE)[climate_vars.R](./scripts) and R code [climate_vars.R](./scripts). 
-First of all, create a GEE account and upload the GEE code. Select the desired years, run the code, and upload the resulting files into the [raster folder](./data/rasters). Next, open the R code file [climate_vars.R](./scripts). Follow the provided instructions to calculate the traditional soil climate simulation model known as the Newhall Simulation Model **(cite here) (link: https://github.com/ncss-tech/jNSMR)**
+Environmental variables related to soil climate can be generated using the Google Earth Engine (GEE)[gee_climate_vars](./scripts/GEE) and R code [climate_vars.R](./scripts). 
+First of all, create a GEE account and upload the GEE code. Select the desired years, run the code, and upload the resulting files into the [raster folder](./data/rasters). Next, open the R code file [climate_vars.R](./scripts). Follow the provided instructions to calculate the traditional soil climate simulation model known as the [Newhall Simulation Model](https://github.com/ncss-tech/jNSMR).
 
 The file named **`newhall_zam_clipped.tif`** contains these variables, so there is no need to generate them here.
 
