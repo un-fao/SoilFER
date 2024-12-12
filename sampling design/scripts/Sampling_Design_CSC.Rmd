@@ -1,9 +1,6 @@
 ---
-output:
-  html_document:
-    toc: true
-    toc_float: false
-    number_sections: true
+output: officedown::rdocx_document
+  
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}

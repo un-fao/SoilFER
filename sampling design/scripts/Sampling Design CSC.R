@@ -286,7 +286,7 @@
     newhall$moistureRegime <- c()
     
   # Merge covs and climate data
-    cov.dat <- c(cov.dat, newhall,temperatureRegime,moistureRegime)
+    cov.dat <- c(cov.dat, newhall, temperatureRegime, moistureRegime)
     
   # Project covariates if necessary
     if(crs(cov.dat)!=epsg){

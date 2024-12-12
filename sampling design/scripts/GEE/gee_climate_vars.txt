@@ -1,0 +1,75 @@
+// Climate data sets for NewHall vars from 1981 - up to date
+// calculate the average temperature from minimum and maximum temperatures
+// download the Average temperature
+// download the Precipitation
+// download the Potential Evapotranspiration (PET) 
+
+// Define the country boundaries (WGS84 - EPSG 4326) - Retrieve it from the shapefile.
+var geometry = ee.Geometry.Rectangle({coords: [30.3268922659869276,-14.4508420218621545, 31.8631868858262521,-13.3197790413950923], geodesic: false});
+
+// Access the TerraClimate data
+var dataset = ee.ImageCollection('IDAHO_EPSCOR/TERRACLIMATE')
+                  .filter(ee.Filter.date('1981-01-01', '2023-12-31')); // Update the year accordingly. Always one year before the current one.
+
+// Get temperature max and min
+var maximumTemperature = dataset.select('tmmx');
+var mxT = maximumTemperature.toBands();
+var minimumTemperature = dataset.select('tmmn');
+var mnT = minimumTemperature.toBands();
+
+// Get precipitation
+var precipitation =dataset.select('pr');
+var pre =precipitation.toBands();
+
+// Get evapotranspiration
+var evapotranspiration = dataset.select('pet');
+var pet =evapotranspiration.toBands();
+
+// Calculates the difference between Max and Min temperature
+var diff = mxT.add(mnT);
+var avT = diff.divide(2);
+
+// Clip the rasters to the country boundaries
+var avT =avT.clip(geometry);
+var pre =pre.clip(geometry);
+var pet =pet.clip(geometry);
+
+// Display the outputs
+Map.addLayer(avT, {}, 'default RGB');
+Map.addLayer(pre, {}, 'default RGB');
+Map.addLayer(pet, {}, 'default RGB');
+
+// Export the outputs
+// Average Temperature
+Export.image.toDrive({
+  image: avT, 
+  description: 'Average_Temp_1981_uptodate', // Update the file name here. 
+  scale: 4000, 
+  region: geometry, 
+  maxPixels: 100000000000,
+  crs:'EPSG:4326'
+  
+});
+
+// Precipitation
+Export.image.toDrive({
+  image: pre, 
+  description: 'Prec_1981_uptodate', // Update the file name here. 
+  scale: 4000, 
+  region: geometry, 
+  maxPixels: 100000000000,
+  crs:'EPSG:4326'
+  
+});
+
+// Potential Evapotranspiration
+Export.image.toDrive({
+  image: pet, 
+  description: 'PET_1981_uptodate', // Update the file name here. 
+  scale: 4000, 
+  region: geometry, 
+  maxPixels: 100000000000,
+  crs:'EPSG:4326'
+  
+});
+
