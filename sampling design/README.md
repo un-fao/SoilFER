@@ -8,11 +8,11 @@ This folder contains materials to produce a Soil Sampling Design for the SoilFER
 
 The first hierarchical level selects the primary sampling units using a spatial coverage sampling method based on environmental covariates (model-based). The second and third hierarchical levels select the secondary and tertiary sampling units using simple random sampling and stratified random sampling, respectively, both without replacement (design-based). This implementation standardizes soil sampling methodologies across the various countries involved in the project.
 
-## Folder Content - Shapes (Shapefiles/Vectors)
+## Folder "data" - Shapes (Shapefiles/Vectors)
 
 The country boundaries, legacy data, country administrative boundaries (i.e., states and/or provinces), protected areas (e.g., national parks) and geology for this training can be downloaded from the [shapes folder](./data/shapes).
 
-## Folder Content - Rasters
+## Folder "data" - Rasters
 
 The environmental covariates for this example can be downloaded from the [raster folder](./data/rasters).
 
@@ -39,6 +39,10 @@ The file named **`newhall_zam_clipped.tif`** contains these variables, so there 
 Land cover data at 10 m or 100 m resolution can be retrieved using the [Hand-in-Hand Geospatial Platform](https://data.apps.fao.org/?lang=en) and Copernicus products via the [`gee.txt` code](./data/rasters).
 
 The crop layer consists of a single raster delineating the location of crops in the region of interest. This layer is named **`cropland_clipped_zmb_v1_epsg_3857.tif`**.
+
+## Folder "scripts"
+
+The R and GEE codes for this training can be downloaded from the [scripts folder](./data/scripts).
 
 ## Important Notes
 
