@@ -20,7 +20,7 @@ The environmental covariates for this example can be downloaded from the [raster
 
 These covariates represent critical environmental factors influencing soil and landscape processes. Climate includes variables such as temperature, precipitation, and evapotranspiration. Remote sensing provides data on vegetation indices, surface temperature, and albedo. Land cover offers insights into vegetation and land use patterns, while topography encompasses elevation, slope, curvature, and terrain indices, all of which are essential for understanding spatial variability.
 
-The file named **`covs_zam_clipped.tif`** contains the environmental variables retrieved from Google Earth Engine using the code in `gee.txt`. There are two ways to retrieve these variables:
+The file named **`covs_zam_clipped.tif`** contains the environmental variables retrieved from Google Earth Engine using the code in [`gee.txt`](./scripts/GEE). There are two ways to retrieve these variables:
 1. By uploading data for the entire country using its ISO Alpha-3 code (e.g., `var ISO = ['ZMB'];`).
 2. By using a shapefile with the country boundaries (e.g., `var shapefile = ee.FeatureCollection('projects/ee-soilfer/assets/your_shapefile');`).
 
@@ -36,7 +36,7 @@ The file named **`newhall_zam_clipped.tif`** contains these variables, so there 
 
 ### Land Use - Crops
 
-Land cover data at 10 m or 100 m resolution can be retrieved using the [Hand-in-Hand Geospatial Platform](https://data.apps.fao.org/?lang=en) and Copernicus products via the [`gee.txt` code](./data/rasters).
+Land cover data at 10 m or 100 m resolution can be retrieved using the [Hand-in-Hand Geospatial Platform](https://data.apps.fao.org/?lang=en) and Copernicus products via the [`gee.txt`](./scripts/GEE) code.
 
 The crop layer consists of a single raster delineating the location of crops in the region of interest. This layer is named **`cropland_clipped_zmb_v1_epsg_3857.tif`**.
 
