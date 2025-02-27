@@ -41,7 +41,7 @@ require(knitr)
 packages_table <- data.frame(
   Package = c(
     "sp", "terra", "raster", "sf", "sgsR", "entropy", "tripack", "tibble", 
-    "manipulate", "dplyr", "synoptReg", "doSNOW", "Rfast", "fields", "ggplot2", "rassta"
+    "manipulate", "dplyr", "synoptReg", "doSNOW", "Rfast", "fields", "ggplot2", "rassta", "snowfall"
   ),
   Purpose = c(
     "Handling spatial data and performing geographic operations.",
@@ -59,7 +59,8 @@ packages_table <- data.frame(
     "Tools for faster computation of statistical methods.",
     "Tools for spatial data interpolation and visualization.",
     "Data visualization using the grammar of graphics.",
-    "Raster spatial sampling and analysis tools."
+    "Raster spatial sampling and analysis tools.",
+    "Parallel computing framework for distributing computations efficiently across multiple cores or nodes."
   )
 )
 
@@ -79,7 +80,7 @@ Some libraries might need to be installed from GitHub before loading. Uncomment 
 
 packages <- c("sp", "terra", "raster", "sf", "sgsR", "entropy", 
               "tripack", "tibble", "manipulate", "dplyr", "synoptReg", 
-              "doSNOW", "Rfast", "fields", "ggplot2", "rassta")
+              "doSNOW", "Rfast", "fields", "ggplot2", "rassta", "snowfall")
 
 invisible(lapply(packages, library, character.only = TRUE))
 
@@ -135,9 +136,10 @@ epsg <- "EPSG:3857"
 
 ```
 
-Users can calculate the total number of sampling sites based on predefined values. For example,out of 300 total sites (i.e., samples), 70% are selected for analysis (`share`), as this percentage aligns with the proportion of croplands. The final number of samples is stored in `nsamples`. Adjusting the number of sites ensures that only a subset of the data is analyzed.
+Users can calculate the total number of sampling sites based on predefined values. For example, out of 300 total sites (i.e., samples), 80% are selected for analysis (share), as this percentage aligns with the proportion of croplands. The final number of samples is stored in nsamples. Adjusting the number of sites ensures that only a subset of the data is analyzed.
 
-```{r number-sites, include=TRUE, warning=FALSE, message=FALSE}
+
+```{r manual-entry-number-of-samples, include=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
 
 nsamples <- 300
 share <- 0.80
@@ -149,7 +151,7 @@ Primary Sampling Units (PSUs) and Secondary Sampling Units (SSUs) are defined he
 
 ```{r number-sus, include=TRUE, warning=FALSE, message=FALSE}
 # Define the number of PSUs to sample
-n.psu <- round(nsamples/8)
+# n.psu <- round(nsamples/8)
   
 # Define PSU and SSUs sizes 
 psu_size <- 2000  # (default = 2km x 2 km)
@@ -893,6 +895,69 @@ PSU.r <- resample(cov.dat, template)
 
 ```
 > <p style="font-size: 75%;">💡<span style="color: #000000;">**Why this matters**:</span> Cropping and resampling ensure that the spatial resolution and extent of covariates match the PSU grid, facilitating accurate spatial analysis and clustering. </p>
+
+### Computing optimal sample size for the PSUs
+
+After rasterising the PSUs (`PSU.r`) for Covariate Space Coverage, it is essential to calculate the optimal sample size for the sample design and future digital soil mapping based on divergence metrics. The method follows the publication:
+
+**Divergence metrics for determining optimal training sample size in digital soil mapping**  
+DOI: [10.1016/j.geoderma.2023.116553](https://doi.org/10.1016/j.geoderma.2023.116553)  
+
+The source scripts are available on [GitHub](https://github.com/newdale/opendsm/tree/main). We begin by loading the script that contains the function for optimal sample size calculation.
+
+```{r loading-opt-sample-size-script, include=TRUE, message=FALSE, warning=FALSE}
+source("scripts/opt_sample.R")
+
+```
+
+Here, we convert the rasterised PSU into a data frame for further processing. Moreover, the following parameters are set:
+   - `Minimum sample size`: 50
+   - `Maximum sample size`: 2000
+   - `Incrementing step`: 25
+   - `Number of iterations per sampling trial`: 4
+
+```{r prep-psu-opt-sample-size, include=TRUE, message=FALSE, warning=FALSE}
+# Prepare covariate data
+psu.r.df <- data.frame(PSU.r)
+
+# Define the minimum, maximum sample sizes, incrementing step and iterations for sampling trials
+initial.n <- 50
+final.n <- 3000
+by.n <- 25
+iters <- 4
+
+```
+
+Using the `opt_sample` function, we determine the optimal number of sampling sites based on Kullback-Leibler Divergence metrics. `fcs` is selected for feature (covariate) coverage sampling. Default is Conditioned Latin Hypercube sampling (`clhs`).
+Another important aspect is to understand the methods of selecting the optimal number of samples. 
+   - `Kullback-Leibler Divergence (KLD)`: A measure of how one probability distribution differs from another. It tells us how much information is "lost" when we approximate one distribution with another.
+   - `Jensen-Shannon Divergence (JSD)`: A symmetrized and smoothed version of the Kullback-Leibler divergence. Unlike DKL, DJS is always finite and symmetric.
+   - `Jensen-Shannon Distance (JS Distance)`: The square root of the Jensen-Shannon divergence, which makes it a true mathematical distance. 
+
+Saurette et al. (2023) pointed out that this method overestimated the optimal sample size. For this reason, we DO NOT consider the **JS Distance and normalised JSD**.
+
+```{r computing-opt-sample-size, include=TRUE, message=FALSE, warning=FALSE}
+# Calculate optimal sample size using normalized KL-div, JS-div and JS distance
+opt_N_fcs <-  opt_sample(alg="fcs", 
+                         s_min=initial.n, 
+                         s_max=final.n, 
+                         s_step=by.n, 
+                         s_reps=iters, 
+                         covs = psu.r.df, 
+                         cpus=NULL, 
+                         conf=0.95)
+opt_N_fcs$optimal_sites
+optimal_N_KLD <- opt_N_fcs$optimal_sites[1,2]
+```
+
+The final number of PSUs was calculated for the specific land use class, and is stored in `nsamples`. Users can manually adjust the number of sites if they want to ensure that reflects their need. The number of samples is regarding the PSUs. Therefore, the optimal number of sites will be: ```{r} optimal_N_KLD * 4 ```.
+
+```{r final-opt-sample-size, include=TRUE, message=FALSE, warning=FALSE}
+
+nsamples <- optimal_N_KLD
+n.psu <- nsamples
+
+```
 
 ### GAME ON - Covariate Space Coverage - Computing PSUs
 
