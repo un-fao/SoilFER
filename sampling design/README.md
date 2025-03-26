@@ -17,7 +17,7 @@ The country boundaries, legacy data, country administrative boundaries (i.e., st
 The environmental covariates for this example can be downloaded from the [raster folder](./data/rasters). As for the second set of environmental covariates used to select the SSUs, they can be retrieved using the following codes in Google Earth Engine: 
 1. [Terrain derivatives](https://code.earthengine.google.com/038b661e6a022e63ab46411df8ea688f)
 2. [Sentinel imagery and indices](https://code.earthengine.google.com/42e997378198c2cc5d06b98150d90e93)
-3. [Sythetic Bare Soil Image from Sentinel](https://code.earthengine.google.com/b87f87783a37b6664f0d927fdea19e57)
+3. [Synthetic Bare Soil Image from Sentinel](https://code.earthengine.google.com/b87f87783a37b6664f0d927fdea19e57)
 
 These variables can be harmonised using the R code [(prep_gee_highres_vars.R)](./scripts)
 
