@@ -1,6 +1,12 @@
 ---
-output: officedown::rdocx_document
-  
+output:
+  html_document:
+    toc: true
+    toc_float: false
+    number_sections: true
+  officedown::rdocx_document: default
+  word_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
@@ -20,7 +26,7 @@ Additionally, install `tinytex::install_tinytex()` by running `tinytex::install_
 
 ### Setting Up the Environment and Loading Libraries
 
-First, set the working directory to the location of your R script. This ensures that all paths in the script are relative to the script's location.
+First, set the working directory. This ensures that all paths in the script are relative to the folder's location.
 
 ```{r set-working-directory, include=TRUE, warning=FALSE}
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -40,9 +46,8 @@ require(knitr)
 # Create a data frame with the packages and their purposes
 packages_table <- data.frame(
   Package = c(
-    "sp", "terra", "raster", "sf", "sgsR", "entropy", "tripack", "tibble", 
-    "manipulate", "dplyr", "synoptReg", "doSNOW", "Rfast", "fields", "ggplot2", "rassta", "snowfall"
-  ),
+    "sp", "terra", "raster", "sf", "sgsR", "entropy", "tripack", "tibble", "manipulate", 
+    "dplyr", "synoptReg", "doSNOW", "Rfast", "fields", "ggplot2", "rassta", "snowfall"),
   Purpose = c(
     "Handling spatial data and performing geographic operations.",
     "Working with raster and vector spatial data, including transformations and analyses.",
@@ -103,7 +108,7 @@ ISO.code <- "ZMB"
 ```
 ><p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> In this example, **"ZMB"** is used as the ISO code for Zambia. </p>
 
-The SoilFER project focuses on three primary land-use types: croplands (80%), grasslands (15%), and forests (5%). In this example, the `landuse` variable specifies *croplands* as the focus of analysis.
+The SoilFER project focuses on three primary land-use types: croplands (85%), grasslands (10%), and forests (5%). In this example, the `landuse` variable specifies *croplands* as the focus of analysis.
 
 ```{r landuse, include=TRUE, warning=FALSE, message=FALSE}
 
@@ -136,14 +141,14 @@ epsg <- "EPSG:3857"
 
 ```
 
-Users can calculate the total number of sampling sites based on predefined values. For example, out of 300 total sites (i.e., samples), 80% are selected for analysis (share), as this percentage aligns with the proportion of croplands. The final number of samples is stored in nsamples. Adjusting the number of sites ensures that only a subset of the data is analyzed.
+Users can calculate the total number of sampling sites based on predefined values. For example, out of 300 total sites, 80% are selected for analysis (share), as this percentage aligns with the proportion of croplands. The final number of sites is stored in `nsites`. Adjusting the number of sites ensures that only a subset of the data is analyzed. However, further ahead in this document, we propose a statically sound approach to determining the optimal sample size. 
 
 
 ```{r manual-entry-number-of-samples, include=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
 
-nsamples <- 300
+nsites <- 300
 share <- 0.80
-nsamples <- nsamples * share
+nsites <- nsites * share
 
 ```
 
@@ -151,7 +156,7 @@ Primary Sampling Units (PSUs) and Secondary Sampling Units (SSUs) are defined he
 
 ```{r number-sus, include=TRUE, warning=FALSE, message=FALSE}
 # Define the number of PSUs to sample
-# n.psu <- round(nsamples/8)
+# n.psu <- round(nsites/8)
   
 # Define PSU and SSUs sizes 
 psu_size <- 2000  # (default = 2km x 2 km)
@@ -159,7 +164,7 @@ ssu_size <- 100 # (default = 100m x 100m = 1 ha)
   
 # Define number of target and alternative SSUs at each PSU
 num_primary_ssus <- 4
-num_alternative_ssus <- 3
+num_alternative_ssus <- 4
     
 # Define number of TSUs at each SSU
 number_TSUs <- 3
@@ -185,7 +190,7 @@ percent_crop <- 10
 
 ### Functions
 
-**Covariate Space Coverage (CSC)** focuses on ensuring sampling points are well-distritbuted in terms of enviromental covariates, and useful for scenarios where the region has heterogeneous environmental conditions. 
+**Covariate Space Coverage (CSC)** focuses on ensuring sampling points are well-distributed in terms of environmental covariates, and useful for scenarios where the region has heterogeneous environmental conditions. 
 
 The `CSIS` function  is the backbone of clustering sampling units in the covariate space. It ensures optimal distribution of sampling units based on covariate data while considering any fixed legacy data. Here's a step-by-step explanation:
 
@@ -305,9 +310,9 @@ The `generate_tsu_points_within_ssu` function focuses on generating TSUs within 
 
 generate_tsu_points_within_ssu <- function(ssu, number_TSUs, index, ssu_type, crops) {
   # Convert SSU to SpatVector for masking
-  ssu_vect <- ssu_grid_sf[index, ]
+  ssu_vect <- ssu_grid_sf[rownames(ssu_grid_sf) == index, ]
   # Clip the spatRaster to the SSU to focus the sampling within the SSU boundaries
-  clipped_lu <- crop(crops, ssu_vect)
+  clipped_lu <- terra::crop(crops, ssu_vect)
   # Generate random points within the clipped spatRaster using sample_srs
   sampled_points <- sample_srs(clipped_lu, nSamp = number_TSUs)  # Ensure this is compatible or modify
   # Make sure the TSUs falls within landuse areas
@@ -320,7 +325,7 @@ generate_tsu_points_within_ssu <- function(ssu, number_TSUs, index, ssu_type, cr
   sampled_points$SSU_ID <- index
   sampled_points$TSU_ID <- seq_len(nrow(sampled_points))
   sampled_points$SSU_Type <- ssu_type
-  sampled_points$TSU_Name <- paste0(sampled_points$PSU_ID,".",sampled_points$SSU_ID,".",seq_len(nrow(sampled_points)))
+  sampled_points$TSU_Name <- paste0(ISO.code, sprintf("%04d", sampled_points$PSU_ID),"-",sampled_points$SSU_ID,"-",seq_len(nrow(sampled_points)))
   return(sampled_points)
 }
 
@@ -377,9 +382,9 @@ ggplot(data = country_boundaries) +
 
 ```
 
-### Environmental covariates - Optional
+### Environmental covariates for selecting PSUs
 
-The optional environmental covariates include information on non-protected areas, high slope mask, geology, and geomorphology. These inputs are optional and do not affect the selection of sampling units.
+The additional environmental covariates include information on non-protected areas, high slope mask, geology, and [geomorphology](https://code.earthengine.google.com/038b661e6a022e63ab46411df8ea688f). These inputs are optional and do not affect the selection of sampling units.
 
 Each explanatory dataset is specified as a file path. This approach ensures clear organization of data sources. The variables `geo.classes` and `geomorph.classes` are defined to identify fields within the geology and geomorphology datasets that store their respective types/classes. 
 
@@ -492,9 +497,7 @@ if (file.exists(geomorph)) {
 ```
 
 
-### Mandatory environmental covariates
-
-A list of mandatory environmental covariates was created to serve as parameters for selecting sampling units, providing a baseline for countries lacking high-resolution environmental data. If available, countries may use their own datasets as substitutes. 
+A list of **mandatory** environmental covariates was created to serve as parameters for selecting sampling units, providing a baseline for countries lacking high-resolution environmental data. If available, countries may use their own datasets as substitutes. 
 
 The following steps outline how covariates are loaded, processed, and prepared for analysis. Let's take a look into them! 
 
@@ -629,8 +632,8 @@ Covariates are cropped to align with the administrative boundary of the target r
 ```{r crop-export-covs, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
 
 # Crop covariates on administrative boundary
-cov.dat <- crop(cov.dat, country_boundaries, mask=TRUE, overwrite=TRUE)
-writeRaster(cov.dat, paste0(raster.path,"cov_dat_stack.tif"),overwrite=TRUE)
+cov.dat <- terra::crop(cov.dat, country_boundaries, mask=TRUE, overwrite=TRUE)
+#writeRaster(cov.dat, paste0(raster.path,"cov_dat_stack.tif"),overwrite=TRUE)
 
 # Load cov.dat again, in case of issues
 #cov.dat <- rast(paste0(raster.path,"cov_dat_stack.tif"))
@@ -645,7 +648,7 @@ pca <- synoptReg::raster_pca(cov.dat)  # Faster than with terra::princomp
 
 # Get SpatRaster layers from the pca object
 cov.dat <- pca$PCA
-summary(cov.dat)
+#summary(cov.dat)
 
 # Subset rasters to main PC (var. explained >= 0.99)
 n_comps <- first(which(pca$summaryPCA[3,] > 0.99))
@@ -657,7 +660,7 @@ The processed PCA is exported for future analysis or backup in case of issues.
 
 ```{r save-cov-pca, include=TRUE, message=FALSE, warning=FALSE, results='hide', eval=TRUE}
 # Save PCA rasters to results folder
-writeRaster(cov.dat,paste0(results.path,"PCA_projected.tif"),overwrite=TRUE)
+#writeRaster(cov.dat,paste0(results.path,"PCA_projected.tif"),overwrite=TRUE)
 
 # Remove pca stack
 rm(pca)
@@ -707,7 +710,7 @@ If `npa` is a raster instead of a shapefile, uncomment the appropriate lines in 
 
 if(exists("npa")){
   # If npa is a shapefile
-  crops <- mask(crops, npa)
+  crops <- terra::mask(crops, npa)
   # If npa is a raster. Resample to match crops
   # npa <- resample(npa,crops, method="near")
   # crops <- crops * npa
@@ -758,7 +761,7 @@ The `writeRaster()` function saves the processed land-use raster to disk, and th
 
 ```{r saving-reloading-landuse, include=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
 
-writeRaster(lu,paste0(raster.path,"cropland_zmb_100m_v1_epsg_3857.tif"),overwrite=TRUE)
+#writeRaster(lu,paste0(raster.path,"cropland_zmb_100m_v1_epsg_3857.tif"),overwrite=TRUE)
 
 lu <- rast(paste0(raster.path,"cropland_zmb_100m_v1_epsg_3857.tif"))
 
@@ -804,7 +807,7 @@ The processed PSU grid is saved to a shapefile using the `write_sf()` function. 
 
 ```{r saving-reloading-psu-grid-full, include=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
 
-write_sf(psu_grid,paste0(results.path,"../grid2k.shp"),overwrite=TRUE)
+#write_sf(psu_grid,paste0(results.path,"../grid2k.shp"),overwrite=TRUE)
 
 psu_grid <- sf::st_read(file.path(paste0(results.path,"../grid2k.shp"))) 
 
@@ -846,7 +849,7 @@ psu_grid$crop_perc <- crop_perc$crop_perc
 ```
 
 
-```{r fig-landuse-coverage-psus, fig.align='center', include=TRUE, message=FALSE, echo=FALSE}
+```{r fig-landuse-coverage-psus, fig.align='center', include=TRUE, message=FALSE, echo=FALSE, fig.width=12, fig.height=10}
 
 ggplot() +
   geom_sf(data = psu_grid, aes(fill = crop_perc)) +
@@ -860,7 +863,7 @@ Like before, the updated `psu_grid` with crop coverage percentages is saved to a
 
 ```{r save-reload-psu-grid-landuse, include=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
 
-write_sf(psu_grid, file.path(paste0(results.path,"/psu_grid_counts.shp")), overwrite=TRUE)
+#write_sf(psu_grid, file.path(paste0(results.path,"/psu_grid_counts.shp")), overwrite=TRUE)
 
 psu_grid <- sf::st_read(file.path(paste0(results.path,"/psu_grid_counts.shp"))) 
 
@@ -889,7 +892,7 @@ The covariate stack (`cov.dat`) is cropped to the sampling universe defined by t
 
 ```{r rasterising-psus-csc, include=TRUE, message=FALSE, warning=FALSE}
 
-cov.dat <- crop(cov.dat, psu_grid, mask=TRUE, overwrite=TRUE)
+cov.dat <- terra::crop(cov.dat, psu_grid, mask=TRUE, overwrite=TRUE)
 
 PSU.r <- resample(cov.dat, template)
 
@@ -898,10 +901,7 @@ PSU.r <- resample(cov.dat, template)
 
 ### Computing optimal sample size for the PSUs
 
-After rasterising the PSUs (`PSU.r`) for Covariate Space Coverage, it is essential to calculate the optimal sample size for the sample design and future digital soil mapping based on divergence metrics. The method follows the publication:
-
-**Divergence metrics for determining optimal training sample size in digital soil mapping**  
-DOI: [10.1016/j.geoderma.2023.116553](https://doi.org/10.1016/j.geoderma.2023.116553)  
+After rasterising the PSUs (`PSU.r`) for Covariate Space Coverage, it is essential to calculate the optimal sample size for the sample design and future digital soil mapping based on divergence metrics. The method follows the publication: *Divergence metrics for determining optimal training sample size in digital soil mapping*  DOI: [10.1016/j.geoderma.2023.116553](https://doi.org/10.1016/j.geoderma.2023.116553)  
 
 The source scripts are available on [GitHub](https://github.com/newdale/opendsm/tree/main). We begin by loading the script that contains the function for optimal sample size calculation.
 
@@ -911,10 +911,11 @@ source("scripts/opt_sample.R")
 ```
 
 Here, we convert the rasterised PSU into a data frame for further processing. Moreover, the following parameters are set:
-   - `Minimum sample size`: 50
-   - `Maximum sample size`: 2000
-   - `Incrementing step`: 25
-   - `Number of iterations per sampling trial`: 4
+
++ `Minimum sample size`: 50
++ `Maximum sample size`: 2000
++ `Incrementing step`: 25
++ `Number of iterations per sampling trial`: 4
 
 ```{r prep-psu-opt-sample-size, include=TRUE, message=FALSE, warning=FALSE}
 # Prepare covariate data
@@ -930,13 +931,16 @@ iters <- 4
 
 Using the `opt_sample` function, we determine the optimal number of sampling sites based on Kullback-Leibler Divergence metrics. `fcs` is selected for feature (covariate) coverage sampling. Default is Conditioned Latin Hypercube sampling (`clhs`).
 Another important aspect is to understand the methods of selecting the optimal number of samples. 
-   - `Kullback-Leibler Divergence (KLD)`: A measure of how one probability distribution differs from another. It tells us how much information is "lost" when we approximate one distribution with another.
-   - `Jensen-Shannon Divergence (JSD)`: A symmetrized and smoothed version of the Kullback-Leibler divergence. Unlike DKL, DJS is always finite and symmetric.
-   - `Jensen-Shannon Distance (JS Distance)`: The square root of the Jensen-Shannon divergence, which makes it a true mathematical distance. 
+
++ `Kullback-Leibler Divergence (KLD)`: A measure of how one probability distribution differs from another. It tells us how much information is "lost" when we approximate one distribution with another.
+
++ `Jensen-Shannon Divergence (JSD)`: A symmetrized and smoothed version of the Kullback-Leibler divergence. Unlike DKL, DJS is always finite and symmetric.
+
++ `Jensen-Shannon Distance (JS Distance)`: The square root of the Jensen-Shannon divergence, which makes it a true mathematical distance. 
 
 Saurette et al. (2023) pointed out that this method overestimated the optimal sample size. For this reason, we DO NOT consider the **JS Distance and normalised JSD**.
 
-```{r computing-opt-sample-size, include=TRUE, message=FALSE, warning=FALSE}
+```{r computing-opt-sample-size, include=TRUE, message=FALSE, warning=FALSE, fig.width=12, fig.height=10}
 # Calculate optimal sample size using normalized KL-div, JS-div and JS distance
 opt_N_fcs <-  opt_sample(alg="fcs", 
                          s_min=initial.n, 
@@ -950,16 +954,15 @@ opt_N_fcs$optimal_sites
 optimal_N_KLD <- opt_N_fcs$optimal_sites[1,2]
 ```
 
-The final number of PSUs was calculated for the specific land use class, and is stored in `nsamples`. Users can manually adjust the number of sites if they want to ensure that reflects their need. The number of samples is regarding the PSUs. Therefore, the optimal number of sites will be: ```{r} optimal_N_KLD * 4 ```.
+The final number of PSUs was calculated for the specific land use class, and is stored in `n.psu`. Users can manually adjust the number of sites if they want to ensure that reflects their need. The number of samples is regarding the PSUs. Since each PSU is expected to include four samples, , the optimal number of target sites will be:**`r optimal_N_KLD * 4 `**.
 
 ```{r final-opt-sample-size, include=TRUE, message=FALSE, warning=FALSE}
 
-nsamples <- optimal_N_KLD
-n.psu <- nsamples
+n.psu <- optimal_N_KLD
 
 ```
 
-### GAME ON - Covariate Space Coverage - Computing PSUs
+### Covariate Space Coverage - Computing PSUs
 
 Covariate Space Coverage (CSC) sampling is a clustering technique designed to ensure that sampling units are distributed effectively across a multidimensional space of environmental covariates. Covariates are standardized (centered and scaled), so their mean is 0 and standard deviation is 1. This prevents variables with larger ranges (e.g., elevation vs. precipitation) from dominating the clustering process. The algorithm groups raster cells in covariate space into clusters by minimizing the Mean Squared Shortest Scaled Distance (MSSSD). MSSSD is a measure of how well the points in the dataset fit into their assigned clusters. The term "scaled distance" refers to distances measured in the space of standardized covariates, not physically scaled distances.
 
@@ -1087,7 +1090,7 @@ target.PSUs <- psu_grid[psu_grid$ID %in% PSUs$ID,] %>% dplyr::select(ID)
 ```
 
 
-```{r fig-target-psus, fig.align='center', include=TRUE, message=FALSE, echo=FALSE}
+```{r fig-target-psus, fig.align='center', include=TRUE, message=FALSE, echo=FALSE, fig.width=12, fig.height=10}
 
 ggplot() +
   geom_raster(data = as.data.frame(PSU.r$PC1, xy = TRUE), aes(x = x, y = y, fill = PC1)) +
@@ -1113,7 +1116,7 @@ rm(new,dmin,MSSSD)
 
 Here, you can visualize how the selected PSUs are distributed across the first two principal components (PC1 and PC2) of the environmental covariates.
 
-```{r fig-pc1-pc2, fig.align='center', include=TRUE, message=FALSE, echo=FALSE}
+```{r fig-pc1-pc2, fig.align='center', include=TRUE, message=FALSE, echo=FALSE, fig.width=12, fig.height=10}
 
 ggplot(PSU.df) +
   geom_point(mapping = aes(x = PC1, y = PC2, colour = as.character(cluster)), alpha = 0.5) +
@@ -1128,110 +1131,270 @@ ggplot(PSU.df) +
 
 ### Computing SSUs and TSUs
 
-In the previous section, we computed PSUs. Now, the focus shifts to SSUs and TSUs, which add hierarchical levels to the sampling process. SSUs are grid cells within each PSU filtered based on a land-use percentage threshold and randomly selected, and TSUs are randomly points within each SSU providing finer sampling points. 
+In the previous section, we computed PSUs. Now, the focus shifts to SSUs and TSUs, which add hierarchical levels to the sampling process. SSUs are 100m x 100m grid cells within each PSU, selected based on high-resolution environmental covariates derived from the Shuttle Radar Topography Mission (SRTM) digital elevation data and Sentinel-2 multispectral imagery. The Google Earth Engine script for terrain derivatives can be accessed [here](https://code.earthengine.google.com/038b661e6a022e63ab46411df8ea688f), while the script for Sentinel-2 multispectral imagery indices is available [here](https://code.earthengine.google.com/42e997378198c2cc5d06b98150d90e93). The selection process involves the reallocation of SSUs within each PSU using CSC Sampling to optimise spatial representativeness based on environmental heterogeneity. TSUs are randomly distributed points within each SSU, providing finer-scale sampling resolution. 
+
+High-resolution environmental covariates provide fine-scale information that helps in selecting **Secondary Sampling Units (SSUs)**. The following code loads a stack of high-resolution environmental covariates, crops it to the extent of the target PSUs, and applies a mask to ensure alignment.
+
+```{r loading-high-res-env-covars, include=TRUE, message=FALSE, warning=FALSE, fig.width=12, fig.height=10}
+# R code for creating the raster stack is named "prep_gee_highres_vars"
+cov.dat.ssu <- terra::rast(paste0(raster.path, "hres_data/covs_stack_ssu_1ha_ZMB.tif"))
+
+names(cov.dat.ssu)
+
+cov.dat.ssu <- subset(cov.dat.ssu, 
+                          names(cov.dat.ssu)[!names(cov.dat.ssu) %in% c("sysisen_B2", "sysisen_B3", "sysisen_B4", 
+                                                                        "sysisen_B5","sysisen_B6", "sysisen_B7", 
+                                                                        "sysisen_B8", "sysisen_B8A","sysisen_B11", 
+                                                                        "sysisen_B12")]) 
+
+names(cov.dat.ssu)
+
+cov.dat.ssu[is.na(cov.dat.ssu)] <- 0
+
+ggplot() +
+  geom_raster(data = as.data.frame(cov.dat.ssu$NDVI, xy = TRUE), aes(x = x, y = y, fill = NDVI)) +
+  scale_fill_viridis_c() +
+  #scale_fill_gradientn(colours = colorspace::diverge_hcl(7)) +
+  geom_sf(data = target.PSUs, color = "#101010", fill = NA, lwd = 0.5) +
+  labs(title = "Target Primary Sampling Units",
+       x = "Longitude",
+       y = "Latitude",
+       fill = "NDVI") +
+  theme_minimal()
+
+```
+
 
 Empty lists are created to store the computed SSUs (`selected_ssus`) and TSUs (`all_psus_tsus`). Each PSU will have its own set of SSUs and TSUs added to these lists.
+This loop iterates over all selected PSUs generating SSUs and TSUs for each PSU. First of all, a grid of SSUs is created within the PSU boundary (`st_make_grid`), and only SSUs meeting the land-use coverage threshold (`percent_crop`) are retained. After that, a specified number of target and alternative SSUs are selected (`num_primary_ssus` and `num_alternative_ssus`) using covariate space coverage sampling based on a set of 23 high-resolution environmental covariates. For each SSU, generate TSUs as simple random sampling points without replacement within the SSU boundary being labeled as target or alternative.
 
-```{r empty-lists-store-tsus-ssus, include=TRUE, message=FALSE, warning=FALSE}
+```{r computing-ssus-tsus, include=TRUE, message=FALSE, warning=FALSE}
+
 selected_ssus <- list()
 
 all_psus_tsus <- list()
-```
 
-This loop iterates over all selected PSUs generating SSUs and TSUs for each PSU. First of all, a grid of SSUs is created within the PSU boundary (`st_make_grid`), and only SSUs meeting the land-use coverage threshold (`percent_crop`) are retained. After that, a specified number of target and alternative SSUs are randomly selected (`num_primary_ssus` and `num_alternative_ssus`). For each SSU, generate TSUs as random points within the SSU boundary being labeled as target or alternative.
-
-```{r computing-ssus-tsus, include=TRUE, message=FALSE, warning=FALSE}
 for (psu_id in 1:nrow(target.PSUs)) {
-  
-  # Selects one PSU at a time 
-  selected_psu <- target.PSUs[psu_id, ]
-  
-  # Generate SSUs within the selected PSU
-  ssu_grid <- st_make_grid(selected_psu, cellsize = c(ssu_size, ssu_size), square = TRUE)
-  ssu_grid_sf <- st_sf(geometry = ssu_grid)
-  
-  # Convert ssu_grid_sf to SpatVector
-  ssu_grid_vect <- vect(ssu_grid_sf)
-  
-  # Extract values of lu for cells that intersect with ssu_grid_vect
-  extracted_values <- extract(crops, ssu_grid_vect, fun=table)
-  
-  # Add lu code to the SSUs    
-  ssu_grid_sf$lu <- (extracted_values[,2]*100)/25
-  ssu_grid_sf <- ssu_grid_sf[ssu_grid_sf$lu > percent_crop, ]
-  
-  print(paste(psu_id, " out of ", nrow(target.PSUs)))
-  
-  # Counts the total number of filtered SSUs
-  total_ssus <- nrow(ssu_grid_sf)
-  
-  # If the PSU contains enough SSUs, a random sample of SSUs is selected
-  if(total_ssus >= (num_primary_ssus + num_alternative_ssus)) {
-    primary_ssus_indices <- sample(1:total_ssus, num_primary_ssus, replace = FALSE)
-    available_for_alternatives <- setdiff(1:total_ssus, primary_ssus_indices)
-    alternative_ssus_indices <- sample(available_for_alternatives, num_alternative_ssus, replace = FALSE)
-    selected_ssus[[psu_id]] <- rbind(ssu_grid_sf[primary_ssus_indices, ], ssu_grid_sf[alternative_ssus_indices, ])
-    
-    primary_tsus <- lapply(primary_ssus_indices, 
-                           function(index) {
-                             generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Target",crops)
-                             }
-                           )
-    # Generate TSUs for alternative SSUs with naming
-    alternative_tsus <- lapply(alternative_ssus_indices, 
-                               function(index) {
-                                 generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
-                                 }
-                               )
-    # Combine all TSUs of the current PSU into one sf object
-    all_psus_tsus[[psu_id]] <- do.call(rbind, c(primary_tsus, alternative_tsus))
-    
-  # If there are not enough SSUs, a warning is issued, and the PSU is skipped.
-  } else {
-    warning(paste("PSU", psu_id, "does not have enough SSUs for selection. Skipping."))
-  }
+      selected_psu <- target.PSUs[psu_id, ]
+      
+      # Generate SSUs within the selected PSU
+      ssu_grid <- st_make_grid(selected_psu, cellsize = c(ssu_size, ssu_size), square = TRUE)
+      ssu_grid_sf <- st_sf(geometry = ssu_grid)
+      
+      # Convert SSU grid to SpatVector
+      ssu_grid_vect <- vect(ssu_grid_sf)
+      
+      # Extract land use values (LU) to filter SSUs
+      extracted_values <- extract(crops, ssu_grid_vect, fun = table)
+      
+      # Add lu code to the SSUs    
+      ssu_grid_sf$lu <- (extracted_values[,2]*100)/25
+      ssu_grid_sf <- ssu_grid_sf[ssu_grid_sf$lu > percent_crop, ]
+      
+      # Uncomment these two lines if you're using RGui or RStudio console
+      # cat(sprintf("\rProgress: %.2f%% (%d out of %d)", (psu_id / nrow(target.PSUs)) * 100, psu_id, nrow(target.PSUs)))
+      # flush.console()
+      
+      # Print dynamic progress update
+      if (psu_id == nrow(target.PSUs)) {
+        cat(sprintf("\rProgress: %.2f%% (%d out of %d)", (psu_id / nrow(target.PSUs)) * 100, psu_id, nrow(target.PSUs)))
+        flush.console()
+        }
+
+      
+      # Count available SSUs
+      total_ssus <- nrow(ssu_grid_sf)
+      
+      if (total_ssus >= (num_primary_ssus + num_alternative_ssus)) {
+        
+        # Extract covariate values from raster stack for each SSU
+        ssu_covariates <- terra::extract(cov.dat.ssu, vect(ssu_grid_sf), df = TRUE)
+        
+        # Merge extracted covariate values with SSU data
+        ssu_data <- cbind(ssu_grid_sf, ssu_covariates[, -1])  # Drop first column (index)
+        ssu_data_values <- st_drop_geometry(ssu_data)
+        
+        # Identify columns you do NOT want to scale
+        exclude <- grep("^geomorph_|^lu$", names(ssu_data_values), value = TRUE)
+        
+        # Create two data.frames: one to scale, one to keep as-is
+        to_scale <- ssu_data_values[, !names(ssu_data_values) %in% exclude]
+        to_keep  <- ssu_data_values[, names(ssu_data_values) %in% exclude, drop = FALSE]
+        
+        # Drop columns with only NA
+        to_scale <- to_scale[, colSums(!is.na(to_scale)) > 0, drop = FALSE]
+        
+        # Identify zero-variance columns (after removing NA-only columns)
+        zero_variance_cols <- sapply(to_scale, function(x) sd(x, na.rm = TRUE) == 0)
+        zero_variance_cols[is.na(zero_variance_cols)] <- TRUE  # Treat NA-sd columns as zero variance
+        
+        # Scale only columns with variance
+        scaled_part <- to_scale
+        if (any(!zero_variance_cols)) {
+          scaled_part[, !zero_variance_cols] <- scale(to_scale[, !zero_variance_cols])
+        }
+        
+        # Combine back
+        mygrd_ssu <- cbind(to_keep, scaled_part)
+        mygrd_ssu <- mygrd_ssu[, names(mygrd_ssu)]
+        
+        ### Determine the Optimal Number of Clusters for this PSU ###
+        wss_values <- sapply(1:10, function(k) kmeans(mygrd_ssu[, -1], centers = k, nstart = 10)$tot.withinss)
+        optimal_k <- which.max(diff(diff(wss_values))) + 1  # Find biggest drop in WSS
+        # Ensure a minimum of num_primary_ssus clusters
+        optimal_k <- num_primary_ssus
+        
+        # Perform K-means clustering for this PSU
+        kmeans_result <- kmeans(mygrd_ssu[, -1], centers = optimal_k, iter.max = 10000, nstart = 10)
+        ssu_data$cluster <- kmeans_result$cluster  # Assign clusters
+        #str(ssu_data)
+        ssu_data$cluster <- as.factor(ssu_data$cluster)
+        
+        ### CSC Sampling: Select Closest SSUs to Cluster Centers ###
+        # Compute distances from cluster centers to all SSUs
+        D <- rdist(x1 = kmeans_result$centers, x2 = mygrd_ssu[, -1])  # Distance matrix
+        # Select the SSU closest to each cluster center (Targets)
+        target_units <- apply(D, MARGIN = 1, FUN = function(x) order(x)[1])  # Closest
+        target_ssus <- ssu_data[target_units, ]
+        
+        # Select the SSU second closest to each cluster center (Replacements)
+        replacement_units <- apply(D, MARGIN = 1, FUN = function(x) order(x)[2])  # Second closest
+        replacement_ssus <- ssu_data[replacement_units, ]
+        
+        # Ensure replacements are in the same cluster as targets
+        # Add type info
+        target_ssus$SSU_Type <- "Target"
+        replacement_ssus$SSU_Type <- "Replacement"
+        
+        # Assign SSU_IDs: 1–4 for Targets, 5–8 for Replacements
+        target_ssus$SSU_ID <- 1:nrow(target_ssus)
+        replacement_ssus$SSU_ID <- (nrow(target_ssus) + 1):(2 * nrow(target_ssus))
+        
+        # Match replacements to target IDs by cluster
+        replacement_ssus$replacement_for <- sapply(replacement_ssus$cluster, function(cl) {
+          matched <- target_ssus$SSU_ID[target_ssus$cluster == cl]
+          if (length(matched) > 0) return(matched[1]) else return(NA)
+        })
+        
+        # Add consistency for Targets
+        target_ssus$replacement_for <- NA
+        
+        # Combine and store
+        # Add PSU_ID to both sets
+        psu_actual_id <- selected_psu$ID
+        target_ssus$PSU_ID <- psu_actual_id
+        replacement_ssus$PSU_ID <- psu_actual_id
+        selected_ssus[[psu_id]] <- rbind(target_ssus, replacement_ssus)
+        
+        ### Generate TSUs for Primary and Alternative SSUs ###
+        primary_tsus <- lapply(rownames(target_ssus), function(index) {
+          generate_tsu_points_within_ssu(ssu_grid_sf[rownames(ssu_grid_sf) == index, ], number_TSUs, index, "Target", crops)
+        })
+        
+        alternative_tsus <- lapply(rownames(replacement_ssus), function(index) {
+          generate_tsu_points_within_ssu(ssu_grid_sf[rownames(ssu_grid_sf) == index, ], number_TSUs, index, "Replacement", crops)
+        })
+        
+        # Combine all TSUs for the current PSU
+        all_psus_tsus[[psu_id]] <- do.call(rbind, c(primary_tsus, alternative_tsus))
+        
+        
+      } else {
+        warning(paste("PSU", psu_id, "does not have enough SSUs for selection. Skipping."))
+      }
 }
+
 
 ```
 > <p style="font-size: 75%;">💡<span style="color: #000000;">**Note**:</span> Users can follow the progress by observing the printed output. For example, `"1 out of 30"` indicates that processing for the first PSU is complete, and there are 29 more PSUs left. </p>
 
-After all TSUs have been generated, they are combined into a single dataset (`all_tsus`). The dataset includes metadata about each TSU's type (Target or Alternative) and its hierarchical assignment to SSUs and PSUs.
+Here, you can see how the SSUs are selected using CSC and the set of high-resolution remote sensing data.
 
-```{r combining-all-target-tsus, include=TRUE, message=FALSE, warning=FALSE}
-all_tsus <- do.call(rbind, all_psus_tsus)
-all_tsus$TSU_Type <- "Target"
-all_tsus[all_tsus$TSU_ID >1,"TSU_Type"] <- "Alternative"
-all_tsus$PSU_Type <- "Target"
-all_tsus <- all_tsus %>%
-  dplyr::select("TSU_Name","PSU_ID","SSU_ID","TSU_ID","PSU_Type","SSU_Type","TSU_Type","geometry")
+```{r explan-clusters-ssus, fig.align='center', include=TRUE, message=FALSE, warning=FALSE, echo=FALSE, fig.width= 12, fig.height= 12}
+
+ssu_combined <- selected_ssus[[n.psu]]
+ssu_combined_centroids <- st_centroid(ssu_combined)
+    
+ggplot() +
+  geom_sf(data = ssu_data, aes(fill = factor(cluster)), color = "black", size = 0.2, alpha = 0.5) +  
+  scale_fill_manual(name = "Cluster", values = RColorBrewer::brewer.pal(n = length(unique(ssu_data$cluster)), name = "Set3")) +  
+  geom_sf(data = ssu_combined, aes(color = SSU_Type), fill = NA, size = 1, linetype = "solid") +
+  geom_text(data = ssu_combined_centroids[ssu_combined_centroids$SSU_Type == "Target", ], 
+            aes(x = st_coordinates(geometry)[,1],
+                y = st_coordinates(geometry)[,2],
+                label = SSU_ID),
+            color = "blue", size = 5, fontface = "bold") +
+  geom_text(data = ssu_combined_centroids[ssu_combined_centroids$SSU_Type == "Replacement", ], 
+            aes(x = st_coordinates(geometry)[,1],
+                y = st_coordinates(geometry)[,2],
+                label = replacement_for),
+            color = "red", size = 5, fontface = "bold") +
+  scale_color_manual(name = "SSU Type",
+                     values = c("Target" = "blue",
+                                "Replacement" = "red"),
+                     guide = guide_legend(override.aes = list(fill = NA, size = 1))) +
+  labs(title = "SSU Clusters with Target and Replacement SSUs",
+       x = "Longitude",
+       y = "Latitude") +
+  theme_minimal() +
+  theme(legend.position = "right")  # Keeps the legend in the cluster section
 
 ```
 
-```{r fig-target-tsus, fig.align='center', include=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+After all TSUs have been generated, they are combined into a single dataset (`all_tsus`). The dataset includes metadata about each TSU's type (Target or Alternative) and its hierarchical assignment to SSUs and PSUs.
+
+```{r combining-all-target-tsus, include=TRUE, message=FALSE, warning=FALSE}
+all_ssus <- do.call(rbind, selected_ssus)
+all_ssus <- all_ssus %>%
+  mutate_at(vars(PSU_ID, SSU_ID), as.numeric)
+    
+all_tsus <- do.call(rbind, all_psus_tsus)
+all_tsus <- all_tsus %>%
+  mutate_at(vars(PSU_ID, SSU_ID), as.numeric)
+    
+all_tsus <- st_join(all_tsus, all_ssus[c("PSU_ID", "SSU_ID", "SSU_Type", "replacement_for")])
+    
+all_tsus <- all_tsus %>%
+  select(PSU_ID = PSU_ID.x, SSU_ID = SSU_ID.y, SSU_Type = SSU_Type.y,
+         Replacement_for = replacement_for, TSU_ID, geometry)
+    
+all_tsus$TSU_Type <- "Target"
+all_tsus[all_tsus$TSU_ID >1,"TSU_Type"] <- "Alternative"
+all_tsus$PSU_Type <- "Target"
+    
+all_tsus <- all_tsus %>%
+  dplyr::select("PSU_ID", "SSU_ID", "SSU_Type", "Replacement_for", "TSU_ID", "TSU_Type", "geometry")
+
+```
+
+```{r fig-target-tsus, fig.align='center', include=TRUE, message=FALSE, warning=FALSE, echo=FALSE, fig.width= 12, fig.height= 10}
 
 # Define the bounding box for the selected PSU
 bbox_psu <- st_bbox(selected_psu[1])
 lu_bbox = terra::crop(crops, selected_psu[1], mask = T, overwrite = T)
 
+tsus_plot <- all_tsus[all_tsus$PSU_ID == selected_psu$ID, ]
+ssus_plot <- all_ssus[all_ssus$PSU_ID == selected_psu$ID, ]
+
 # Define the labels for each type of data
-labels <- c("Target PSU", "Selected SSUs", "Alternative SSUs", "TSUs")
+labels <- c("Target PSU", "Target SSUs", "Replacement SSUs", "TSUs")
 
 ggplot() +
-  geom_raster(data = as.data.frame(lu_bbox, xy = T), aes(x = x, y = y, fill = lu)) +
-  #scale_fill_gradientn(colours = colorspace::diverge_hcl(7)) +
-  guides(fill = "none")  +
+  geom_raster(data = as.data.frame(lu_bbox, xy = TRUE), aes(x = x, y = y, fill = lu)) +
+  guides(fill = "none") +
   geom_sf(data = selected_psu[1], fill = NA, aes(color = labels[1]), lwd = 0.6, show.legend = TRUE) +
-  geom_sf(data = ssu_grid_sf[primary_ssus_indices, ], fill = NA, aes(color = labels[2]), lwd = 0.6, show.legend = TRUE) +
-  geom_sf(data = ssu_grid_sf[alternative_ssus_indices, ], fill = NA, aes(color = labels[3]), lwd = 0.6, show.legend = TRUE) +
-  geom_sf(data = all_tsus, aes(geometry = geometry, color = labels[4]), size = 0.5, shape = 19, show.legend = TRUE) +
-  coord_sf(xlim = c(bbox_psu["xmin"], bbox_psu["xmax"]), ylim = c(bbox_psu["ymin"], bbox_psu["ymax"])) +
+  geom_sf(data = ssus_plot[ssus_plot$SSU_Type == "Target", ], fill = NA, aes(color = labels[2]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = ssus_plot[ssus_plot$SSU_Type == "Replacement", ], fill = NA, aes(color = labels[3]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = tsus_plot, aes(geometry = geometry, color = labels[4]), size = 0.5, shape = 19, show.legend = TRUE) +
+  coord_sf(xlim = c(bbox_psu["xmin"], bbox_psu["xmax"]),
+           ylim = c(bbox_psu["ymin"], bbox_psu["ymax"])) +
   labs(title = "Target PSU, SSUs, and TSUs",
        x = "Longitude",
        y = "Latitude",
        color = "Legend") +
   scale_color_manual(values = c("Target PSU" = "blue",
-                                "Selected SSUs" = "blue",
-                                "Alternative SSUs" = "red",
+                                "Target SSUs" = "blue",
+                                "Replacement SSUs" = "red",
                                 "TSUs" = "black")) +
   theme_minimal() +
   theme(legend.position = "right",
@@ -1292,7 +1455,7 @@ all_tsus <- all_tsus %>%
 Each TSU is assigned a unique site ID for traceability. The ID is constructed using the country code, PSU ID, SSU order, and TSU ID.
 
 ```{r final-site-id-target, include=TRUE, message=FALSE, warning=FALSE}
-all_tsus$site_id = paste0(ISO.code, all_tsus$PSU_ID, "-", all_tsus$order, "-", all_tsus$TSU_ID)
+all_tsus$site_id = paste0(ISO.code, sprintf("%04d", all_tsus$PSU_ID), "-", all_tsus$SSU_ID, "-", all_tsus$TSU_ID, "C")
 
 ```
 
@@ -1364,96 +1527,176 @@ alt_psus_tsus_sf <- list()
 selected_ssus_sf <- list()
 
 for (psu_id in 1:nrow(replacements)) {
-  # Selects one PSU at a time 
   selected_psu <- replacements[psu_id, ]
   
-  # Generate SSUs within the selected PSU
   ssu_grid <- st_make_grid(selected_psu, cellsize = c(ssu_size, ssu_size), square = TRUE)
   ssu_grid_sf <- st_sf(geometry = ssu_grid)
   
-  # Convert ssu_grid_sf to SpatVector
   ssu_grid_vect <- vect(ssu_grid_sf)
   
-  # Extract values of lu for cells that intersect with ssu_grid_vect
-  extracted_values <- extract(crops, ssu_grid_vect, fun=table)
-  
-  # Add lu code to the SSUs 
+  extracted_values <- extract(crops, ssu_grid_vect, fun = table)
+  # Add lu code to the SSUs   
   ssu_grid_sf$lu <- (extracted_values[,2]*100)/25
   ssu_grid_sf <- ssu_grid_sf[ssu_grid_sf$lu > percent_crop, ]
-  
-  print(paste(psu_id, " out of ", nrow(replacements)))
-  
-  # Counts the total number of filtered SSUs
+      
+  # Print dynamic progress update
+  if (psu_id == nrow(replacements)) {
+    cat(sprintf("\rProgress: %.2f%% (%d out of %d)", (psu_id / nrow(replacements)) * 100, psu_id, nrow(replacements)))
+    flush.console()
+    }
+ 
+  # Count available SSUs
   total_ssus <- nrow(ssu_grid_sf)
+      
+  if (total_ssus >= (num_primary_ssus + num_alternative_ssus)) {
+        
+  # Extract covariate values from raster stack for each SSU
+  ssu_covariates <- terra::extract(cov.dat.ssu, vect(ssu_grid_sf), df = TRUE)
+        
+  # Merge extracted covariate values with SSU data
+  ssu_data <- cbind(ssu_grid_sf, ssu_covariates[, -1])  # Drop first column (index)
+  ssu_data_values <- st_drop_geometry(ssu_data)
   
-  # If the PSU contains enough SSUs, a random sample of SSUs is selected
-  if(total_ssus >= (num_primary_ssus + num_alternative_ssus)) {
-    primary_ssus_indices <- sample(1:total_ssus, num_primary_ssus, replace = FALSE)
-    available_for_alternatives <- setdiff(1:total_ssus, primary_ssus_indices)
-    alternative_ssus_indices <- sample(available_for_alternatives, num_alternative_ssus, replace = FALSE)
-    
-    selected_ssus_sf[[psu_id]] <- rbind(ssu_grid_sf[primary_ssus_indices, ], ssu_grid_sf[alternative_ssus_indices, ])
-    
-    # Generate alternative TSUs for SSUs with naming
-    primary_tsus <- lapply(primary_ssus_indices, 
-                           function(index) {
-                             generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
-                             }
-                           )
-    
-    # Generate TSUs for alternative SSUs with naming
-    alternative_tsus <- lapply(alternative_ssus_indices, 
-                               function(index) {
-                                 generate_tsu_points_within_ssu(ssu_grid_sf[index, ], number_TSUs, index, "Alternative",crops)
-                                 }
-                               )
-    
-    # Combine all TSUs of the current PSU into one sf object
-    alt_psus_tsus_sf[[psu_id]] <- do.call(rbind, c(primary_tsus, alternative_tsus))
-    
-    # If there are not enough SSUs, a warning is issued, and the PSU is skipped.
-      } else {
-        warning(paste("PSU", psu_id, "does not have enough SSUs for selection. Skipping."))
-      }
+  # Identify columns you do NOT want to scale
+  exclude <- grep("^geomorph_|^lu$", names(ssu_data_values), value = TRUE)
+  # Create two data.frames: one to scale, one to keep as-is
+  to_scale <- ssu_data_values[, !names(ssu_data_values) %in% exclude]
+  to_keep  <- ssu_data_values[, names(ssu_data_values) %in% exclude, drop = FALSE]
+  # Drop columns with only NA
+  to_scale <- to_scale[, colSums(!is.na(to_scale)) > 0, drop = FALSE]
+      
+  # Identify zero-variance columns (after removing NA-only columns)
+  zero_variance_cols <- sapply(to_scale, function(x) sd(x, na.rm = TRUE) == 0)
+  zero_variance_cols[is.na(zero_variance_cols)] <- TRUE  # Treat NA-sd columns as zero variance
+        
+  # Scale only columns with variance
+  scaled_part <- to_scale
+  if (any(!zero_variance_cols)) {
+    scaled_part[, !zero_variance_cols] <- scale(to_scale[, !zero_variance_cols])
+    }
+        
+  # Combine back
+  mygrd_ssu <- cbind(to_keep, scaled_part)
+  mygrd_ssu <- mygrd_ssu[, names(mygrd_ssu)]
+        
+  ### Determine the Optimal Number of Clusters for this PSU ###
+  wss_values <- sapply(1:10, function(k) kmeans(mygrd_ssu[, -1], centers = k, nstart = 10)$tot.withinss)
+  optimal_k <- which.max(diff(diff(wss_values))) + 1  # Find biggest drop in WSS
+  # Ensure a minimum of num_primary_ssus clusters
+  optimal_k <- num_primary_ssus
+        
+  # Perform K-means clustering for this PSU
+  kmeans_result <- kmeans(mygrd_ssu[, -1], centers = optimal_k, iter.max = 10000, nstart = 10)
+  ssu_data$cluster <- kmeans_result$cluster  # Assign clusters
+  #str(ssu_data)
+  ssu_data$cluster <- as.factor(ssu_data$cluster)
+        
+  ### CSC Sampling: Select Closest SSUs to Cluster Centers ###
+  # Compute distances from cluster centers to all SSUs
+  D <- rdist(x1 = kmeans_result$centers, x2 = mygrd_ssu[, -1])  # Distance matrix
+  # Select the SSU closest to each cluster center (Targets)
+  target_units <- apply(D, MARGIN = 1, FUN = function(x) order(x)[1])  # Closest
+  target_ssus <- ssu_data[target_units, ]
+        
+  # Select the SSU second closest to each cluster center (Replacements)
+  replacement_units <- apply(D, MARGIN = 1, FUN = function(x) order(x)[2])  # Second closest
+  replacement_ssus <- ssu_data[replacement_units, ]
+        
+  # Ensure replacements are in the same cluster as targets
+  # Add type info
+  target_ssus$SSU_Type <- "Target"
+  replacement_ssus$SSU_Type <- "Replacement"
+        
+  # Assign SSU_IDs: 1–4 for Targets, 5–8 for Replacements
+  target_ssus$SSU_ID <- 1:nrow(target_ssus)
+  replacement_ssus$SSU_ID <- (nrow(target_ssus) + 1):(2 * nrow(target_ssus))
+        
+  # Match replacements to target IDs by cluster
+  replacement_ssus$replacement_for <- sapply(replacement_ssus$cluster, function(cl) {
+  matched <- target_ssus$SSU_ID[target_ssus$cluster == cl]
+  if (length(matched) > 0) return(matched[1]) else return(NA)})
+        
+  # Add consistency for Targets
+  target_ssus$replacement_for <- NA
+        
+  # Combine and store
+  # Add PSU_ID to both sets
+  psu_actual_id <- selected_psu$ID
+  target_ssus$PSU_ID <- psu_actual_id
+  replacement_ssus$PSU_ID <- psu_actual_id
+  selected_ssus_sf[[psu_id]] <- rbind(target_ssus, replacement_ssus)
+        
+  ### Generate TSUs for Primary and Alternative SSUs ###
+  primary_tsus <- lapply(rownames(target_ssus), function(index) {
+    generate_tsu_points_within_ssu(ssu_grid_sf[rownames(ssu_grid_sf) == index, ], number_TSUs, index, "Target", crops)
+    })
+        
+  alternative_tsus <- lapply(rownames(replacement_ssus), function(index) {
+    generate_tsu_points_within_ssu(ssu_grid_sf[rownames(ssu_grid_sf) == index, ], number_TSUs, index, "Replacement", crops)
+    })
+        
+  # Combine all TSUs for the current PSU
+  alt_psus_tsus_sf[[psu_id]] <- do.call(rbind, c(primary_tsus, alternative_tsus))
+  
+  } else {
+    warning(paste("PSU", psu_id, "does not have enough SSUs for selection. Skipping."))
+  }
 }
 
 # Combine TSUs from all PSUs into one sf object
-alt_tsus_combined_sf <- do.call(rbind, alt_psus_tsus_sf)
-alt_tsus_combined_sf$TSU_Type <- "Target"
-alt_tsus_combined_sf[alt_tsus_combined_sf$TSU_ID >1,"TSU_Type"] <- "Alternative"
-alt_tsus_combined_sf$PSU_Type <- "Alternative"
-
-alt_tsus_combined_sf <- alt_tsus_combined_sf %>%
-  dplyr::select("TSU_Name","PSU_ID","SSU_ID","TSU_ID","PSU_Type","SSU_Type","TSU_Type","geometry")
+  # Combine TSUs from all PSUs into one sf object
+  all_ssus_combined_sf <- do.call(rbind, selected_ssus_sf)
+  all_ssus_combined_sf <- all_ssus_combined_sf %>%
+    mutate_at(vars(PSU_ID, SSU_ID), as.numeric)
+    
+  alt_tsus_combined_sf <- do.call(rbind, alt_psus_tsus_sf)
+  alt_tsus_combined_sf <- alt_tsus_combined_sf %>%
+    mutate_at(vars(PSU_ID, SSU_ID), as.numeric)
+    
+  alt_tsus_combined_sf <- st_join(alt_tsus_combined_sf, all_ssus_combined_sf[c("PSU_ID", "SSU_ID", "SSU_Type", "replacement_for")])
+    
+  alt_tsus_combined_sf <- alt_tsus_combined_sf %>%
+    select(PSU_ID = PSU_ID.x, SSU_ID = SSU_ID.y, SSU_Type = SSU_Type.y,
+           Replacement_for = replacement_for, TSU_ID, geometry)
+    
+  alt_tsus_combined_sf$TSU_Type <- "Target"
+  alt_tsus_combined_sf[alt_tsus_combined_sf$TSU_ID >1,"TSU_Type"] <- "Alternative"
+  alt_tsus_combined_sf$PSU_Type <- "Target"
+    
+  alt_tsus_combined_sf <- alt_tsus_combined_sf %>%
+    dplyr::select("PSU_ID", "SSU_ID", "SSU_Type", "Replacement_for", "TSU_ID", "TSU_Type", "geometry")
 
 ```
 
-```{r fig-alternative-tsus, fig.align='center', include=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+```{r fig-alternative-tsus, fig.align='center', include=TRUE, message=FALSE, warning=FALSE, echo=FALSE, fig.width=12, fig.height=10}
 
 # Define the bounding box for the selected PSU
 bbox_psu <- st_bbox(selected_psu[1])
 lu_bbox = terra::crop(crops, selected_psu[1], mask = T, overwrite = T)
 
+tsus_plot <- alt_tsus_combined_sf[alt_tsus_combined_sf$PSU_ID == selected_psu$ID, ]
+ssus_plot <- all_ssus_combined_sf[all_ssus_combined_sf$PSU_ID == selected_psu$ID, ]
+
 # Define the labels for each type of data
-labels <- c("Alternative PSU", "Target SSUs", "Alternative SSUs", "Alternative TSUs")
+labels <- c("Target PSU", "Target SSUs", "Replacement SSUs", "TSUs")
 
 ggplot() +
-  geom_raster(data = as.data.frame(lu_bbox, xy = T), aes(x = x, y = y, fill = lu)) +
-  #scale_fill_gradientn(colours = colorspace::diverge_hcl(7)) +
+  geom_raster(data = as.data.frame(lu_bbox, xy = T), aes(x = x, y = y, fill = NA)) +
+  #scale_fill_gradientn(colours = colorspace::diverge_hcl(7)) + #scale_fill_viridis_c() +
   guides(fill = "none")  +
   geom_sf(data = selected_psu[1], fill = NA, aes(color = labels[1]), lwd = 0.6, show.legend = TRUE) +
-  geom_sf(data = ssu_grid_sf[primary_ssus_indices, ], fill = NA, aes(color = labels[2]), lwd = 0.6, show.legend = TRUE) +
-  geom_sf(data = ssu_grid_sf[alternative_ssus_indices, ], fill = NA, aes(color = labels[3]), lwd = 0.6, show.legend = TRUE) +
-  geom_sf(data = alt_tsus_combined_sf[1], aes(geometry = geometry, color = labels[4]), size = 0.5, shape = 19, show.legend = TRUE) +
+  geom_sf(data = ssus_plot[ssus_plot$SSU_Type == "Target", ], fill = NA, aes(color = labels[2]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = ssus_plot[ssus_plot$SSU_Type == "Replacement", ], fill = NA, aes(color = labels[3]), lwd = 0.6, show.legend = TRUE) +
+  geom_sf(data = tsus_plot, aes(geometry = geometry, color = labels[4]), size = 0.5, shape = 19, show.legend = TRUE) +
   coord_sf(xlim = c(bbox_psu["xmin"], bbox_psu["xmax"]), ylim = c(bbox_psu["ymin"], bbox_psu["ymax"])) +
-  labs(title = "Alternative PSU, SSUs, and TSUs",
+  labs(title = "Alternative PSU",
        x = "Longitude",
        y = "Latitude",
        color = "Legend") +
-  scale_color_manual(values = c("Alternative PSU" = "red", 
+  scale_color_manual(values = c("Target PSU" = "blue",
                                 "Target SSUs" = "blue",
-                                "Alternative SSUs" = "red",
-                                "Alternative TSUs" = "black")) +
+                                "Replacement SSUs" = "red",
+                                "TSUs" = "black")) +
   theme_minimal() +
   theme(legend.position = "right",
         legend.justification = "center",
@@ -1488,7 +1731,7 @@ alt_tsus_combined_sf <- alt_tsus_combined_sf %>%
 Each TSU is assigned a unique site ID for traceability. The ID is constructed using the country code, PSU ID, SSU order, and TSU ID.
 
 ```{r final-site-id-alternative, include=TRUE, message=FALSE, warning=FALSE}
-alt_tsus_combined_sf$site_id = paste0(ISO.code, alt_tsus_combined_sf$PSU_ID, "-", alt_tsus_combined_sf$order, "-", alt_tsus_combined_sf$TSU_ID)
+alt_tsus_combined_sf$site_id = paste0(ISO.code, sprintf("%04d", alt_tsus_combined_sf$PSU_ID), "-", alt_tsus_combined_sf$SSU_ID, "-", alt_tsus_combined_sf$TSU_ID, "C")
 
 ```
 
