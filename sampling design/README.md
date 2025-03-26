@@ -6,7 +6,7 @@ The *SoilFER Technical Manual for Sampling Design* provides general guidance on 
 
 This folder contains materials to produce a Soil Sampling Design for the SoilFER Project, using a study case in Zambia as an example. The design applies a three-stage hierarchical hybrid method incorporating both probability and non-probability sampling for soil mapping and monitoring within the SoilFER framework.
 
-The first hierarchical level selects the primary sampling units using a spatial coverage sampling method based on environmental covariates (model-based). The second and third hierarchical levels select the secondary and tertiary sampling units using simple random sampling and stratified random sampling, respectively, both without replacement (design-based). This implementation standardizes soil sampling methodologies across the various countries involved in the project.
+The first hierarchical level selects the primary sampling units (PSUs) using covariate space coverage sampling method based on environmental covariates at a 2km x 2km pixel resolution. Like the selection of PSUs, the second hierarchical level selects the secondary sampling units (SSUs) (i.e., 100m x 100m) using CSC sampling and a second set of environmental covariates. Lastly, the third hierarchical levels select the tertiary sampling units using simple random sampling without replacement. This implementation standardizes soil sampling methodologies across the various countries involved in the project.
 
 ## Folder "data" - Shapes (Shapefiles/Vectors)
 
