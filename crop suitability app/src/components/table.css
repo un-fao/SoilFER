@@ -1,0 +1,27 @@
+.table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;    
+}
+.table-header {
+    display: table-header-group;
+    font-weight: bold;
+    background-color: #6e431d;
+    color: #fefffb;
+}
+.table-row {
+    display: table-row;
+    background-color: #fefffb;
+    color: #6e431d;
+    &:hover{
+        background-color: #c8ae8d !important;
+    }
+}
+.table-cell {
+    display: table-cell;
+    padding: 2px;
+    border: 1px solid #c2b7b5;
+    align-items: center;
+    vertical-align: middle;
+    font-weight: bold;
+}
