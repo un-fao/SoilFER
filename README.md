@@ -16,11 +16,11 @@
 
 ## 🧭 What’s in this Repository?
 
-- 🗺️ **SamplingDesign**  
+- 🗺️ **Sampling design**  
   Scripts for implementing soil sampling designs adaptable to any country context within the SoilFER project framework.  
   To support training sessions, the folder also provides a practical case study based in **Zambia**.
 
-- 🌾 **CropSuitabilityApp**  
+- 🌾 **Crop suitability App**  
   Acess to source code of the **SoilFER App for Localized Crop Suitability**, a web-based decision-support tool designed to enhance agricultural planning through geospatial data integration, crop modeling, and suitability assessments and support decision-making and accessible at ➡️ https://data.apps.fao.org/soilfer/cropsuit.
 
 
