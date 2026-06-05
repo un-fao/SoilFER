@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "FAO AgroAdapt Simulation Game",
+  "short_name": "SoilFER",
+  "name": "FAO SoilFER Crop Suitability Application",
   "icons": [
     {
       "src": "favicon.ico",
@@ -14,6 +14,16 @@
     },
     {
       "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "./android-chrome-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "./android-chrome-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
