@@ -6,7 +6,7 @@
 
 ## 📘 Overview
 
-**SoilFER** is a programme supporting **soil mapping for resilient agri-food systems** in **Central America** and **Sub-Saharan Africa**. By integrating robust sampling design, soil analysis, and mapping workflows, SoilFER supports evidence-based **policy formulation** and **fertilizer recommendations** at national and field scales.
+**SoilFER** is a programme supporting **Soil Mapping for Resilient Agrifood Systems in Africa and Central America**. By integrating robust sampling design, soil analysis, and mapping workflows, SoilFER supports evidence-based **policy formulation** and **fertilizer recommendations** at national and field scales.
 
 ## 🧭 What’s in this Repository?
 
