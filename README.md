@@ -10,6 +10,12 @@
   </tr>
 </table>
 
+<table style="width: 100%;">
+  <tr>
+     <img src="img/SOILFER_FINAL_STRAP.jpg" alt="SoilFER Logo" width="260">
+  </tr>
+</table>
+
 ## 📘 Overview
 
 **SoilFER** is a programme supporting **soil mapping for resilient agri-food systems** in **Central America** and **Sub-Saharan Africa**. By integrating robust sampling design, soil analysis, and mapping workflows, SoilFER supports evidence-based **policy formulation** and **fertilizer recommendations** at national and field scales.
