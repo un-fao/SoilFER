@@ -1,7 +1,10 @@
-import { Panel, Info, SubmitButton, CancelButton } from '../App';
+//import { Panel, Info, SubmitButton, CancelButton } from '../App';
 import { Divider } from 'primereact/divider';
-import { nFormat } from '../App';
+import { nFormat } from '../data/formatters';
 import { HistoricalClimateData } from './HistoricalClimateData';
+import {Panel, Info, SubmitButton, CancelButton,} from './shared/StyledComponents';
+
+
 
 export const FloatingLocationPanel = (props) => {
     const {position,rerender,setRerender,historicalClimate,setHistoricalClimate,setShow,setLocation,map,administrativeInfo,setAdministrativeInfo,setZoomLevel,setPositionNew} = props;

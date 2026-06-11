@@ -1,5 +1,5 @@
 import { useState,useEffect } from 'react';
-import { Panel, Info, SubmitButton, CancelButton } from '../App';
+import { Panel, Info, SubmitButton, CancelButton } from './shared/StyledComponents';
 import { Divider } from 'primereact/divider';
 import { InputSwitch, InputSwitchChangeEvent } from "primereact/inputswitch";
 import { SelectButton, SelectButtonChangeEvent } from 'primereact/selectbutton';

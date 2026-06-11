@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import SyncLoader from "react-spinners/SyncLoader";
 import { Carousel, CarouselResponsiveOption } from 'primereact/carousel';
-import { nFormat } from '../App';
+import { nFormat } from '../data/formatters';
 
 interface Product {
     id: string;

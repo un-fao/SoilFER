@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SubmitButton, CancelButton } from '../App';
+import { SubmitButton, CancelButton } from './shared/StyledComponents';
 import { SoilTest } from "./SoilTest";
 
 import './table.css';
