@@ -177,7 +177,7 @@ export const MapView: React.FC = () => {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: theme.zIndex.map }}>
-      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} doubleClickZoom={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
+      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} doubleClickZoom={false} attributionControl={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
         <MapClickHandler />
         {positionnew
@@ -266,7 +266,7 @@ export const MapView: React.FC = () => {
           </div>
 
           {backgroundLayer === 'OpenStreetMap' && (
-            <MapContainer center={mapCenter} zoom={zoomLevel - 1}
+            <MapContainer center={mapCenter} zoom={zoomLevel - 1} attributionControl={false}
               style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
               <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
@@ -277,7 +277,7 @@ export const MapView: React.FC = () => {
           )}
 
            {backgroundLayer === 'Crop Statistics' && (
-            <MapContainer center={mapCenter} zoom={9} crs={L.CRS.EPSG4326}
+            <MapContainer center={mapCenter} zoom={9} crs={L.CRS.EPSG4326} attributionControl={false}
               style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
               <WmsImageLayer url={gaulStatsWMS} layers="gaul:gaul2_stats" viewparams={gaulStatsViewparams} />
               <MapClickHandler />
@@ -287,7 +287,7 @@ export const MapView: React.FC = () => {
           )}
 
           {backgroundLayer === 'Crop Suitability' && (
-            <MapContainer center={mapCenter} zoom={12} crs={L.CRS.EPSG4326}
+            <MapContainer center={mapCenter} zoom={12} crs={L.CRS.EPSG4326} attributionControl={false}
               style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
               <TileLayer url={SoilFERWMTS} tms={false} attribution="&copy; FAO SoilFER" />
               <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
@@ -298,7 +298,7 @@ export const MapView: React.FC = () => {
           )}         
 
           {backgroundLayer === 'Satellite' && (
-            <MapContainer center={mapCenter} zoom={zoomLevel - 1}
+            <MapContainer center={mapCenter} zoom={zoomLevel - 1} attributionControl={false}
               style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="Tiles &copy; Esri" />
               <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
