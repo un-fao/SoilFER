@@ -10,7 +10,7 @@ import './i18n';
 import 'primereact/resources/themes/saga-orange/theme.css';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
-import 'fontawesome/css/all.css';
+import '@fortawesome/fontawesome-free/css/all.css';
 import 'flag-icons/css/flag-icons.min.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
