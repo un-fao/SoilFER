@@ -1,14 +1,24 @@
 name: Deploy
 
 on:
-  push:
-    branches:
-      - review
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'review'
+        type: choice
+        options:
+          - review
+          - production
+  # push:
+  #   branches:
+  #     - review
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    environment: ${{ github.ref_name == 'main' && 'production' || 'review' }}
+    environment: ${{ github.event.inputs.environment }}
     permissions:
       id-token: write
       contents: read
@@ -28,7 +38,7 @@ jobs:
 
       - name: Build
         run: |
-          cd crop\ suitability\ app
+          cd crop-suitability-app
           npm install
           CI=false npm run build
           ls -lart
