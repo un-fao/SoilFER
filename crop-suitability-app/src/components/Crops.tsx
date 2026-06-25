@@ -1,16 +1,31 @@
-import React, { useState } from "react";
-import { Panel, Info, SubmitButton, CancelButton } from '../App';
-import { Card } from 'primereact/card';
-import { RadioButton, RadioButtonChangeEvent } from "primereact/radiobutton";
-import { Divider } from "primereact/divider";
+import React, { useState, useEffect } from "react";
+import {SubmitButton, CancelButton,} from './shared/StyledComponents';
+import {RadioButton,RadioButtonChangeEvent,} from 'primereact/radiobutton';
+//import { Panel, Info, SubmitButton, CancelButton } from '../App';
+//import { Card } from 'primereact/card';
+//import { Divider } from "primereact/divider";
+
 
 export const Crops = (props) => {
-    const {setShow,crops,crop,setCrop,cropCode,setCropCode,setCropLayerVisible} = props;    
+  const {
+    setShow,
+    crops,
+    crop,
+    setCrop,
+    setCropCode,
+    setCropLayerVisible,
+  } = props;    
     
-    const open = (id)=>{
-        window.open('https://ecocrop.apps.fao.org/ecocrop/srv/en/cropView?id='+id);
-    }
-    setCropCode(crops[crop]?.SoilFERCode);
+    const open = (id) => {
+  window.open(
+    'https://ecocrop.apps.fao.org/ecocrop/srv/en/cropView?id=' + id
+  );
+};
+
+useEffect(() => {
+  setCropCode(crops[crop]?.SoilFERCode);
+}, [crop, crops, setCropCode]);
+    
   return (
     <div className="card">
         <span style={{ fontSize: '10pt' }}>Select your crop from this list below:</span>

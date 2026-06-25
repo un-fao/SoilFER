@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, SubmitButton, CancelButton } from '../App';
+import { Info, SubmitButton, CancelButton } from './shared/StyledComponents';
 import { Divider } from 'primereact/divider';
 import { InputText } from 'primereact/inputtext';
 import { Soil } from './Soil';

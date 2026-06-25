@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import './Result.css';
 import { Divider } from 'primereact/divider';
-import { nFormat } from '../App';
+import { nFormat } from '../data/formatters';
 import SyncLoader from "react-spinners/SyncLoader";
 import { usePDF } from 'react-to-pdf';
 import { Report } from './Report';

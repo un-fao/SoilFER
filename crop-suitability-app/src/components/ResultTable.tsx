@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import SyncLoader from "react-spinners/SyncLoader";
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { nFormat } from '../App';
+import { nFormat } from '../data/formatters';
 
 interface Product {
     id: string;

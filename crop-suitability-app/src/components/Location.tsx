@@ -1,8 +1,8 @@
-import { SubmitButton, CancelButton } from '../App';
+import { SubmitButton, CancelButton } from './shared/StyledComponents';
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from "react-hook-form";
 import { Divider } from 'primereact/divider';
-import { nFormat } from '../App';
+import { nFormat } from '../data/formatters';
 import { HistoricalClimateData } from './HistoricalClimateData';
 
 import "flag-icons/css/flag-icons.min.css";
