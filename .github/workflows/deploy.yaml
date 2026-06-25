@@ -11,9 +11,9 @@ on:
         options:
           - review
           - production
-  # push:
-  #   branches:
-  #     - review
+  push:
+    branches:
+      - review
 
 jobs:
   build:
