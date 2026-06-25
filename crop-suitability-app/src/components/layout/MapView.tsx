@@ -176,8 +176,8 @@ export const MapView: React.FC = () => {
   const mapCenter: [number, number] = positionnew ? [positionnew.lat, positionnew.lng] : (position as [number, number]);
 
   return (
-    <div style={{ position: 'fixed', top: '60px', inset: 0, zIndex: theme.zIndex.map }}>
-      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} doubleClickZoom={false} attributionControl={false} style={{ height: '100%', width: '100%'  }}>
+    <div style={{ /*position: 'fixed', top: '60px', inset: 0,*/height: 'calc(100vh - 100px)', zIndex: theme.zIndex.map }}>
+      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} doubleClickZoom={false} attributionControl={false} style={{ height: 'calc(100vh - 60px)', width: '100%'  }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
         <MapClickHandler />
         {positionnew

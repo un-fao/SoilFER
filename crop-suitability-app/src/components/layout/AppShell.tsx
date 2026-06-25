@@ -32,13 +32,13 @@ const Shell = styled.div`
 const LeftPanel = styled.div<{ $confirmed: boolean; $minimized: boolean }>`
   position: absolute;
   left: 55px;
-  top: clamp(65px, 9vh, 95px);
+  top: clamp(65px, 15vh, 195px);
   width: clamp(200px, 22vw, 350px);
   max-height: ${(p) => p.$minimized ? '52px' : p.$confirmed ? '80vh' : 'calc(100vh - 30px)'};
   overflow: hidden;
   z-index: ${theme.zIndex.panel};
   background-color: ${(p) => (p.$confirmed ? '#fefffb' : theme.colors.background.panel)};
-  color: ${(p) => (p.$confirmed ? '#6e431d' : '#fff')};
+  color: ${(p) => (p.$confirmed ? theme.colors.primary : '#fff')};
   border-radius: ${theme.borderRadius.md};
   border: 2px solid ${theme.colors.primary};
   padding: ${theme.spacing.md};
