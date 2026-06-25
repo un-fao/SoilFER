@@ -1,4 +1,4 @@
-export const theme = {
+  export const theme = {
   colors: {
     primary: '#7e5134',
     primaryDark: '#492815',
@@ -53,9 +53,10 @@ export const theme = {
     xl: '30px',
   },
   borderRadius: {
-    sm: '5px',
-    md: '10px',
-    lg: '20px',
+    xs: '2px',
+    sm: '4px',
+    md: '6px',
+    lg: '8px',
   },
   typography: {
     fontSizeBase: '12pt',
@@ -70,7 +71,7 @@ export const theme = {
   zIndex: {
     map: 1,
     mapOverlay: 2,
-    panel: 4,
+    panel: 999,
     nav: 5,
     modal: 100,
     tooltip: 999,

@@ -10,7 +10,7 @@ const HeaderContainer = styled.header`
   background-color: #fff; /* FAO Primary Blue */
   color: #444;
   padding: 0 20px;
-  height: 60px;
+  height: 50px;
   font-family: 'Open Sans', sans-serif;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -27,13 +27,13 @@ const LogoImage = styled.img`
   height: 50px;
   object-fit: contain;
   background-color: white;
-  padding: 4px;
+  padding: 4px 0;
   border-radius: 4px;
 `;
 
 const Title = styled.h1`
   font-size: 1.4rem;
-  font-weight: 500;
+  font-weight: 600;
   margin: 0;
   line-height: 1;
   display: none;
@@ -104,25 +104,27 @@ export const Header: React.FC = () => {
   return (
     <HeaderContainer>
       <LeftSection>
-        <LogoImage 
-          src={`${process.env.PUBLIC_URL}/SoilFERlogo.png`} 
-          alt="FAO Logo" 
+        <LogoImage
+          src={`${process.env.PUBLIC_URL}/SoilFERlogo.png`}
+          alt="FAO Logo"
           onError={(e) => {
             (e.target as HTMLImageElement).src = `${process.env.PUBLIC_URL}/fao-logo.png`;
           }}
         />
-        <Title>SoilFER Crop Suitability Platform</Title>
+        <Title>SoilFER CropSuit App</Title>
       </LeftSection>
-      
+
       <RightSection>
+
         <NavLinks $isOpen={menuOpen}>
           {/* <NavLink href="#home">{t('nav.home', 'Home')}</NavLink> */}
+          <LanguageSelector />
           <NavLink target="_blank" rel="noopener noreferrer" href="https://www.fao.org/agroinformatics/training-and-resources/data-sets/data-set-detail/crop-suitability-and-potential-yields-(soilfer-platform)/en">{t('nav.about', 'About')}</NavLink>
           {/* <NavLink href="#contact">{t('nav.contact', 'Contact')}</NavLink> */}
         </NavLinks>
-        
-        <LanguageSelector />
-        
+
+
+
         <MenuButton onClick={toggleMenu} aria-label="Toggle navigation">
           <i className={menuOpen ? 'pi pi-times' : 'pi pi-bars'} />
         </MenuButton>

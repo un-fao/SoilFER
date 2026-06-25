@@ -11,7 +11,7 @@ export const GlobalStyle = createGlobalStyle`
     min-width: 900px;
     overflow-x: auto;
     overflow-y: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica', 'Arial', 'Segoe UI', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-family: 'Open Sans', 'Roboto', 'Helvetica', 'Arial', 'Segoe UI', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     font-size: ${({ theme }) => theme.typography.fontSizeBase};
   }
