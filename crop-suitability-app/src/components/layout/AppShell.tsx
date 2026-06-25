@@ -17,6 +17,7 @@ import { mq } from '../../theme/mediaQuery';
 import { useTranslation } from 'react-i18next';
 import { LanguageSelector } from './LanguageSelector';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { Header } from '../header/header';
 
 const Shell = styled.div`
   position: absolute;
@@ -178,6 +179,7 @@ export const AppShell: React.FC = () => {
 
   return (
     <Shell>
+      <Header />
       <PortraitOverlay $dismissed={portraitDismissed}>
         <button
           onClick={() => setPortraitDismissed(true)}
@@ -199,13 +201,7 @@ export const AppShell: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             {locationConfirmed ? (
               <>                
-                <MobileLogo $minimized={false}>
-                  <img
-                    src={`${process.env.PUBLIC_URL}/SoilFERlogoBk.jpg`}
-                    alt="SoilFER App"
-                    style={{ height: '28px', padding: 0, margin: 0 }}
-                  />
-                </MobileLogo>
+         
                 <b><i className="pi pi-map-marker" /> {t('wizard.selectedLocation')}</b>
               </>
             ) : (
@@ -267,13 +263,13 @@ export const AppShell: React.FC = () => {
       </LeftPanel>
 
       {/* RIGHT: logo always, nav + wizard only after location confirmed */}
-      <Logo>
+      {/* <Logo>
         <img
           src={`${process.env.PUBLIC_URL}/SoilFERlogo.png`}
           alt="SoilFER App"
           style={{ height: 'clamp(40px, 8vh, 80px)' }}
         />
-      </Logo>
+      </Logo> */}
 
       {showWizard && wizardVisible && (
         <NavContainer>
