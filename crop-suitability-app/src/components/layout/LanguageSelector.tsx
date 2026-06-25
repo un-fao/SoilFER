@@ -11,18 +11,18 @@ const Wrapper = styled.div`
 `;
 
 const Trigger = styled.button`
-  background: rgba(200, 174, 141, 0.9);
-  border: 1px solid ${({ theme }) => theme.colors.primaryDark};
+  background: #f2f2f2;
+  border: solid 1px #efefef;
   border-radius: ${({ theme }) => theme.borderRadius.sm};
   color: ${({ theme }) => theme.colors.primaryDark};
+  text-transform: uppercase;
   cursor: pointer;
-  font-size: 11pt;
-  font-weight: bold;
-  padding: 4px 8px;
+  font-size: 10pt;
+  padding: 6px 8px;
   display: flex;
   align-items: center;
   gap: 5px;
-  &:hover { background: ${({ theme }) => theme.colors.accent}; }
+  &:hover { background: #cfcfcf }
 `;
 
 const Dropdown = styled.ul<{ $dropUp: boolean }>`
@@ -31,7 +31,7 @@ const Dropdown = styled.ul<{ $dropUp: boolean }>`
   right: 0;
   background: white;
   border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  border-radius: ${({ theme }) => theme.borderRadius.xs};
   list-style: none;
   margin: 0;
   padding: 4px 0;
@@ -80,7 +80,8 @@ export const LanguageSelector: React.FC = () => {
     <Wrapper ref={ref}>
       <Trigger onClick={() => setOpen((o) => !o)}>
         <span className={`fi fi-${current.flag}`} />
-        {current.code.toUpperCase()}
+        {current.label}
+        <span style={{ fontSize: '10px' }}>▼</span>
       </Trigger>
       {open && (
         <Dropdown $dropUp={dropUp}>
