@@ -5,16 +5,19 @@ import { useTranslation } from 'react-i18next';
 const FooterContainer = styled.footer`
   background-color: #fff; /* FAO Primary Blue */
   color: #333;
-  padding: 20px;
+  padding: 10px 20px;
   font-family: 'Open Sans', sans-serif;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
-  gap: 15px;
+  height: 50px;
   z-index: 1000;
   position: relative;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
-
+  height: 50px
+  
   @media (min-width: 768px) {
     flex-direction: row;
     justify-content: space-between;
@@ -26,7 +29,7 @@ const FooterLinks = styled.nav`
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  justify-content: center;
+  justify-content: left;
 
   @media (min-width: 768px) {
     gap: 25px;
@@ -50,7 +53,7 @@ const Copyright = styled.div`
   font-size: 0.85rem;
   
   a {
-    color: #FFFFFF;
+    color: #333;
     text-decoration: none;
     
     &:hover {
@@ -66,7 +69,7 @@ export const Footer: React.FC = () => {
   return (
     <FooterContainer>
       <FooterLinks>
-        <FooterLink href="http://fao.org/contact-us/en/" target="_blank" rel="noopener noreferrer">
+        <FooterLink href="mailto:soilfer@fao.org" target="_blank" rel="noopener noreferrer">
           {t('footer.contactUs', 'Contact Us')}
         </FooterLink>
         <FooterLink href="http://fao.org/contact-us/terms/en/" target="_blank" rel="noopener noreferrer">

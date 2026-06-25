@@ -6,7 +6,8 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 const Wrapper = styled.div`
   position: relative;
-  display: inline-flex;
+  // display: inline-flex;
+  display: none;
   align-items: center;
 `;
 

@@ -8,9 +8,9 @@ const HeaderContainer = styled.header`
   align-items: center;
   justify-content: space-between;
   background-color: #fff; /* FAO Primary Blue */
-  color: #444;
+  color: #333;
   padding: 0 20px;
-  height: 50px;
+  height: 60px;
   font-family: 'Open Sans', sans-serif;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -24,7 +24,7 @@ const LeftSection = styled.div`
 `;
 
 const LogoImage = styled.img`
-  height: 50px;
+  height: 60px;
   object-fit: contain;
   background-color: white;
   padding: 4px 0;
@@ -32,7 +32,7 @@ const LogoImage = styled.img`
 `;
 
 const Title = styled.h1`
-  font-size: 1.4rem;
+  font-size: 1.8rem;
   font-weight: 600;
   margin: 0;
   line-height: 1;
@@ -71,12 +71,13 @@ const NavLinks = styled.nav<{ $isOpen: boolean }>`
 const NavLink = styled.a`
   color: #444;
   text-decoration: none;
-  font-weight: 400;
+  font-weight: 500;
   font-size: 0.95rem;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 
   &:hover {
-    opacity: 0.8;
+    color: #222;
+    text-decoration: underline;
   }
 `;
 
@@ -105,13 +106,13 @@ export const Header: React.FC = () => {
     <HeaderContainer>
       <LeftSection>
         <LogoImage
-          src={`${process.env.PUBLIC_URL}/SoilFERlogo.png`}
+          src={`${process.env.PUBLIC_URL}/fao-logo-three-lines.svg`}
           alt="FAO Logo"
           onError={(e) => {
             (e.target as HTMLImageElement).src = `${process.env.PUBLIC_URL}/fao-logo.png`;
           }}
         />
-        <Title>SoilFER CropSuit App</Title>
+        <Title>SoilFER CropSuit </Title>
       </LeftSection>
 
       <RightSection>
