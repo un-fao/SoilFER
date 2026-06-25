@@ -33,7 +33,7 @@ const Shell = styled.div`
 const LeftPanel = styled.div<{ $confirmed: boolean; $minimized: boolean }>`
   position: absolute;
   left: 55px;
-  top: clamp(65px, 15vh, 195px);
+  top: 80px;
   width: clamp(200px, 22vw, 350px);
   max-height: ${(p) => p.$minimized ? '52px' : p.$confirmed ? '80vh' : 'calc(100vh - 30px)'};
   overflow: hidden;
@@ -272,16 +272,11 @@ export const AppShell: React.FC = () => {
         />
       </Logo> */}
 
-      {showWizard && wizardVisible && (
-        <NavContainer>
-          <WizardNav />
-        </NavContainer>
-      )}
 
       {showWizard && wizardVisible && <WizardPanel />}
 
       {showWizard && !wizardVisible && (
-        <div style={{ position: 'absolute', top: 'clamp(10px, 3.75vh, 10px)', right: '20px', zIndex: theme.zIndex.nav }}>
+        <div style={{ position: 'absolute', top: '10vh', right: '20px', zIndex: theme.zIndex.nav }}>
           <i
             className="pi pi-window-maximize cursor-pointer"
             title={t('nav.showWizard')}
