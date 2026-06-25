@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { LanguageSelector } from './LanguageSelector';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Header } from '../header/header';
+import { Footer } from '../footer/footer';
 
 const Shell = styled.div`
   position: absolute;
@@ -289,6 +290,8 @@ export const AppShell: React.FC = () => {
           />
         </div>
       )}
+
+      <Footer />
     </Shell>
   );
 };
