@@ -6,13 +6,13 @@ export const TechnicalDocumentation: React.FC = () => {
   return (
     <div className="card" style={{ height: 'calc(100vh - 150px)' }}>
       <object
-        data={`${process.env.PUBLIC_URL}/SoilFerApp_UserGuide.pdf`}
+        data={`${process.env.PUBLIC_URL}/SoilFerApp_UserGuide.v2.pdf`}
         type="application/pdf"
         width="100%"
         height="100%"
       >
         <p>
-          <a href={`${process.env.PUBLIC_URL}/SoilFerApp_UserGuide.pdf`}>
+          <a href={`${process.env.PUBLIC_URL}/SoilFerApp_UserGuide.v2.pdf`}>
             {t('docs.downloadGuide')}
           </a>
         </p>
