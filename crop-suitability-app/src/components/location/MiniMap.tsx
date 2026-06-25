@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, Marker, useMap, WMSTileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -42,11 +42,15 @@ export const MiniMap: React.FC<Props> = ({ position, MapClickHandler }) => (
       maxZoom={MINIMAP_ZOOM}
       zoomControl={false}
       style={{ height: 'clamp(180px, 25vh, 250px)', width: '100%' }}
+      attributionControl={false}
     >
-      <TileLayer
-        url="https://geoservices.un.org/arcgis/rest/services/ClearMap_WebTopo/MapServer/tile/{z}/{y}/{x}"
-        attribution='&copy; <a href="https://geoportal.un.org/arcgis/home/item.html?id=541557fd0d4d42efb24449be614e6887">UN Clear Map</a>'
-      />
+        <WMSTileLayer
+             url="https://data.apps.fao.org/map/gsrv/gsrv1/boundaries/wms?service=WMS"
+             layers="bndl"
+             format="image/png"
+             transparent={true}
+             attribution=''
+           />
       <MapResizer />
       <LocationMarker position={position} />
       {MapClickHandler && <MapClickHandler />}

@@ -120,7 +120,7 @@ export const Header: React.FC = () => {
         <NavLinks $isOpen={menuOpen}>
           {/* <NavLink href="#home">{t('nav.home', 'Home')}</NavLink> */}
           <LanguageSelector />
-          <NavLink target="_blank" rel="noopener noreferrer" href="https://www.fao.org/agroinformatics/training-and-resources/data-sets/data-set-detail/crop-suitability-and-potential-yields-(soilfer-platform)/en">{t('nav.about', 'About')}</NavLink>
+          <NavLink target="_blank" rel="noopener noreferrer" href="https://www.fao.org/in-action/soilfer/en">{t('nav.about', 'About')}</NavLink>
           {/* <NavLink href="#contact">{t('nav.contact', 'Contact')}</NavLink> */}
         </NavLinks>
 
