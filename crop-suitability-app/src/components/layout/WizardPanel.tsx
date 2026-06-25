@@ -13,6 +13,7 @@ import { theme } from '../../theme/theme';
 import { mq } from '../../theme/mediaQuery';
 import { useTranslation } from 'react-i18next';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { WizardNav } from './WizardNav';
 
 const PanelHeader = styled.div<{ $minimized: boolean }>`
   ${mq.tablet} {
@@ -33,6 +34,13 @@ const PanelHeader = styled.div<{ $minimized: boolean }>`
   }
 `;
 
+const WizardNavContainer = styled.div`
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: ${theme.borderRadius.sm};
+      margin-bottom: 8px;
+      `;
+
 const Panel = styled.div`
   background-color: ${theme.colors.background.panel};
   color: #fff;
@@ -50,7 +58,7 @@ const Panel = styled.div`
 
 const Container = styled.div<{ $minimized: boolean }>`
   position: absolute;
-  top: 15vh;
+  top: 80px;
   right: 20px;
   max-height: 80vh;
   overflow-y: auto;
@@ -129,6 +137,9 @@ export const WizardPanel: React.FC = () => {
   return (
     <Container $minimized={minimized}>
       <Panel>
+        <WizardNavContainer>
+          { activePanel !== 'Location' && <WizardNav /> }
+        </WizardNavContainer>
         <PanelHeader $minimized={minimized}>
           <h2 className="p-0 m-0" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 'clamp(10pt, 2vw, 18pt)', display: 'inline-flex', alignItems: 'center', color: '#ffba00' }}>

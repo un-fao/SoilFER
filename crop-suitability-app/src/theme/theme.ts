@@ -70,9 +70,9 @@
   },
   zIndex: {
     map: 1,
-    mapOverlay: 2,
+    mapOverlay: 999,
     panel: 999,
-    nav: 5,
+    nav: 999,
     modal: 100,
     tooltip: 999,
   },

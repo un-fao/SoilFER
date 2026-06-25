@@ -101,7 +101,7 @@ const Logo = styled.div`
 
 const NavContainer = styled.div`
   position: absolute;
-  top: 0px;
+  top: 140px;
   right: 120px;
   z-index: ${theme.zIndex.nav};
   display: flex;
