@@ -1,0 +1,60 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'review'
+        type: choice
+        options:
+          - review
+          - production
+  push:
+    branches:
+      - review
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    environment: review
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_ID_PROVIDER }}
+          service_account: ${{ vars.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build
+        run: |
+          cd crop-suitability-app
+          npm install
+          CI=false npm run build
+          ls -lart
+          tar -cvf soilfer.tar.gz --exclude .git --exclude .github -C ./build .
+          #gsutil -m rm -r gs://${{ vars.ARTIFACTS }}/build
+          gsutil cp soilfer.tar.gz gs://${{ vars.ARTIFACTS }}/soilfer.tar.gz
+          gcloud compute ssh ${{ vars.INSTANCE }} --quiet --project=${{ vars.PROJECT_ID }} --zone=${{ vars.ZONE }} --command="bash -s" --tunnel-through-iap --ssh-key-expire-after 60s <<EOF
+          sudo su
+          cd /var/www/html/
+          ls -lart
+          rm -rf *
+          gsutil cp gs://${{ vars.ARTIFACTS }}/soilfer.tar.gz /var/www/html/
+          tar -xf soilfer.tar.gz
+          service apache2 restart
+          EOF
+
+      - name: Create Issue
+        if: failure()
+        uses: un-fao/fao-ga-create-issue@v2

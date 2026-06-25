@@ -50,9 +50,9 @@ const Panel = styled.div`
 
 const Container = styled.div<{ $minimized: boolean }>`
   position: absolute;
-  top: 40px;
+  top: 15vh;
   right: 20px;
-  max-height: calc(100vh - 55px);
+  max-height: 80vh;
   overflow-y: auto;
   overflow-x: auto;
   width: clamp(800px, 33vw, calc(100vw - 100px));

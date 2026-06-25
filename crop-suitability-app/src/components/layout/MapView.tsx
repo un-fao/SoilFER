@@ -129,7 +129,7 @@ const WmsImageLayer: React.FC<{ url: string; layers: string; viewparams: string 
     return (
       `${url}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap` +
       `&LAYERS=${layers}&STYLES=&FORMAT=image/png&TRANSPARENT=true` +
-      `&SRS=EPSG:4326&BBOX=${bbox}&WIDTH=${s.x}&HEIGHT=${s.y}` +      
+      `&SRS=EPSG:4326&BBOX=${bbox}&WIDTH=${s.x}&HEIGHT=${s.y}` +
       `${viewparams}`
     );
   };
@@ -140,7 +140,7 @@ const WmsImageLayer: React.FC<{ url: string; layers: string; viewparams: string 
   useMapEvents({
     moveend: () => { setBounds(map.getBounds()); setImgUrl(build()); },
     zoomend: () => { setBounds(map.getBounds()); setImgUrl(build()); },
-    resize:  () => { setBounds(map.getBounds()); setImgUrl(build()); },
+    resize: () => { setBounds(map.getBounds()); setImgUrl(build()); },
   });
 
   return <ImageOverlay url={imgUrl} bounds={bounds} opacity={1} />;
@@ -176,14 +176,22 @@ export const MapView: React.FC = () => {
   const mapCenter: [number, number] = positionnew ? [positionnew.lat, positionnew.lng] : (position as [number, number]);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: theme.zIndex.map }}>
-      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} doubleClickZoom={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
+    <div style={{ /*position: 'fixed', top: '60px', inset: 0,*/height: 'calc(100vh - 100px)', zIndex: theme.zIndex.map }}>
+      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} doubleClickZoom={false} attributionControl={false} style={{ height: 'calc(100vh - 60px)', width: '100%'  }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
         <MapClickHandler />
         {positionnew
           ? <LocationMarker />
           : <FlyTo position={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} trigger={null} />
         }
+
+        <WMSTileLayer
+          url="https://data.apps.fao.org/map/gsrv/gsrv1/boundaries/wms?service=WMS"
+          layers="bndl"
+          format="image/png"
+          transparent={true}
+          attribution=''
+        />
       </MapContainer>
 
       {showCropLayer && (
@@ -191,10 +199,12 @@ export const MapView: React.FC = () => {
           <div style={{ position: 'absolute', ...(isSmallScreen ? { top: '80px' } : { bottom: '10px' }), left: '10px', zIndex: 3, borderRadius: '10px', border: 'solid 1px #999', background: '#f1f1f1', width: 'fit-content' }}>
             <button
               onClick={() => setBgPanelOpen(o => !o)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'white',
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px', background: 'white',
                 border: 'none', cursor: 'pointer', padding: '6px 10px', width: '100%',
                 borderRadius: bgPanelOpen ? '8px 8px 0 0' : '8px',
-                boxShadow: '0 0 10px rgba(0,0,0,0.2)' }}
+                boxShadow: '0 0 10px rgba(0,0,0,0.2)'
+              }}
             >
               <i className="pi pi-map" />
               <span style={{ fontSize: '11px', fontWeight: 'bold' }}>BACKGROUNDS:</span>
@@ -203,7 +213,7 @@ export const MapView: React.FC = () => {
             </button>
             {bgPanelOpen && (
               <div style={{ padding: '5px' }}>
-                <div style={{ backgroundColor: 'white', padding: '5px', borderRadius: '5px', boxShadow: '0 0 10px rgba(0,0,0,0.2)', width: 'fit-content' }}>                  
+                <div style={{ backgroundColor: 'white', padding: '5px', borderRadius: '5px', boxShadow: '0 0 10px rgba(0,0,0,0.2)', width: 'fit-content' }}>
                   <label style={{ marginLeft: '10px' }}>
                     <input type="radio" name="bgLayer" checked={backgroundLayer === 'OpenStreetMap'} onChange={() => setBackgroundLayer('OpenStreetMap')} /> OpenStreetMap
                   </label>
@@ -220,7 +230,7 @@ export const MapView: React.FC = () => {
                 {backgroundLayer === 'Crop Suitability' && (
                   <div className="flex flex-column gap-1" style={{ width: 'fit-content', marginTop: '5px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '10px' }}>
-                      <p style={{ color: '#555', fontSize: '9pt', fontWeight: 'bolder', margin: 0 }}><b><u>CLASS INDEX</u> (<a href=' https://data.apps.fao.org/catalog//iso/8c2ff562-23bf-48d9-9dac-878518b78323'  target='_blank'>Metadata</a>):</b></p>
+                      <p style={{ color: '#555', fontSize: '9pt', fontWeight: 'bolder', margin: 0 }}><b><u>CLASS INDEX</u> (<a href=' https://data.apps.fao.org/catalog//iso/8c2ff562-23bf-48d9-9dac-878518b78323' target='_blank'>Metadata</a>):</b></p>
                     </div>
                     <div className="flex flex-row gap-1">
                       <div className="flex flex-column gap-1" style={{ width: '200px' }}>
@@ -266,7 +276,7 @@ export const MapView: React.FC = () => {
           </div>
 
           {backgroundLayer === 'OpenStreetMap' && (
-            <MapContainer center={mapCenter} zoom={zoomLevel - 1}
+            <MapContainer center={mapCenter} zoom={zoomLevel - 1} attributionControl={false}
               style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
               <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
@@ -276,8 +286,8 @@ export const MapView: React.FC = () => {
             </MapContainer>
           )}
 
-           {backgroundLayer === 'Crop Statistics' && (
-            <MapContainer center={mapCenter} zoom={9} crs={L.CRS.EPSG4326}
+          {backgroundLayer === 'Crop Statistics' && (
+            <MapContainer center={mapCenter} zoom={9} crs={L.CRS.EPSG4326} attributionControl={false}
               style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
               <WmsImageLayer url={gaulStatsWMS} layers="gaul:gaul2_stats" viewparams={gaulStatsViewparams} />
               <MapClickHandler />
@@ -287,7 +297,7 @@ export const MapView: React.FC = () => {
           )}
 
           {backgroundLayer === 'Crop Suitability' && (
-            <MapContainer center={mapCenter} zoom={12} crs={L.CRS.EPSG4326}
+            <MapContainer center={mapCenter} zoom={12} crs={L.CRS.EPSG4326} attributionControl={false}
               style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
               <TileLayer url={SoilFERWMTS} tms={false} attribution="&copy; FAO SoilFER" />
               <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
@@ -295,10 +305,10 @@ export const MapView: React.FC = () => {
               {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
               <SyncedMap center={mapCenter} zoom={12} />
             </MapContainer>
-          )}         
+          )}
 
           {backgroundLayer === 'Satellite' && (
-            <MapContainer center={mapCenter} zoom={zoomLevel - 1}
+            <MapContainer center={mapCenter} zoom={zoomLevel - 1} attributionControl={false}
               style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="Tiles &copy; Esri" />
               <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
