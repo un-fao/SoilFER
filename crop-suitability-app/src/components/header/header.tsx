@@ -112,7 +112,7 @@ export const Header: React.FC = () => {
             (e.target as HTMLImageElement).src = `${process.env.PUBLIC_URL}/fao-logo.png`;
           }}
         />
-        <Title>SoilFER CropSuit </Title>
+        <Title>SoilFER CropSuit App </Title>
       </LeftSection>
 
       <RightSection>
