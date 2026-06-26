@@ -34,7 +34,7 @@ const NavPanel = styled.div`
 `;
 
 const NavButton = styled.button<{ $active: boolean; $done: boolean }>`
-  background-color: ${(p) => p.$active ? '#fbb615' : p.$done ? '#c8ae8d' : 'rgba(200,174,141,0.35)'};
+  background-color: ${(p) => p.$active ? '#fbb615' : p.$done ? '#c8ae8d' : 'rgb(185, 185, 185)'};
   color: ${(p) => (p.$active || p.$done ? '#6e431d' : '#6e431d')};
   font-weight: bold;
   border: 1px solid #6e431d;
@@ -45,7 +45,7 @@ const NavButton = styled.button<{ $active: boolean; $done: boolean }>`
   transition: all 0.3s ease;
   font-size: ${theme.typography.fontSizeSm};
   box-shadow: ${theme.shadows.button};
-  opacity: ${(p) => (p.disabled ? 0.4 : 1)};
+  filter: ${(p) => (p.disabled ? 'grayscale(1)' : 'none')};
   &:hover:not(:disabled) { background-color: orange; color: #fff; }
 `;
 
@@ -91,7 +91,7 @@ export const WizardNav: React.FC = () => {
           className="pi pi-window-minimize cursor-pointer"
           title={t('nav.hideWizard')}
           onClick={() => dispatch({ type: 'TOGGLE_WIZARD_VISIBLE' })}
-          style={{ color: '#6e431d', fontSize: '14px', padding: '0 6px', alignSelf: 'center' }}
+          style={{ color: '#fff', fontSize: '14px', padding: '0 6px', alignSelf: 'center' }}
         />        
         {TABS.map((tab) => (
           <NavButton

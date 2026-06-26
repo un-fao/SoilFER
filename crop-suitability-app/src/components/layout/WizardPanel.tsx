@@ -35,7 +35,7 @@ const PanelHeader = styled.div<{ $minimized: boolean }>`
 `;
 
 const WizardNavContainer = styled.div`
-      background: #fff;
+      background: transparent;
       padding: 6px 10px;
       border-radius: ${theme.borderRadius.sm};
       margin-bottom: 8px;

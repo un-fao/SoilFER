@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 export const TechnicalDocumentation: React.FC = () => {
   const { t } = useTranslation();
   return (
-    <div className="card" style={{ height: 'calc(100vh - 150px)' }}>
+    <div className="card" style={{ height: 'calc(100vh - 350px)' }}>
       <object
         data={`${process.env.PUBLIC_URL}/SoilFerApp_UserGuide.v2.pdf`}
         type="application/pdf"
