@@ -171,20 +171,60 @@ export const MapView: React.FC = () => {
   const gaulStatsViewparams = `&viewparams=crop:${cropCode.toLowerCase()}%3Binput:${(inputCode + waterCode).toLowerCase()}%3Bsoil:${soilCode}`;
 
   const DEFAULT_CENTER: [number, number] = [20, 0];
-  const DEFAULT_ZOOM = 3.5;
+  const DEFAULT_ZOOM = 2.5;
 
   const mapCenter: [number, number] = positionnew ? [positionnew.lat, positionnew.lng] : (position as [number, number]);
 
+  const mapContainers = <>
+
+    {backgroundLayer === 'OpenStreetMap' && (
+      <MapContainer center={mapCenter} zoom={zoomLevel - 1} attributionControl={false}
+        style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+        <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
+        <MapClickHandler />
+        {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
+        <SyncedMap center={mapCenter} zoom={zoomLevel - 1} />
+      </MapContainer>
+    )}
+
+    {backgroundLayer === 'Crop Statistics' && (
+      <MapContainer center={mapCenter} zoom={9} crs={L.CRS.EPSG4326} attributionControl={false}
+        style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
+        <WmsImageLayer url={gaulStatsWMS} layers="gaul:gaul2_stats" viewparams={gaulStatsViewparams} />
+        <MapClickHandler />
+        {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
+        <SyncedMap center={mapCenter} zoom={9} />
+      </MapContainer>
+    )}
+
+    {backgroundLayer === 'Crop Suitability' && (
+      <MapContainer center={mapCenter} zoom={12} crs={L.CRS.EPSG4326} attributionControl={false}
+        style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
+        <TileLayer url={SoilFERWMTS} tms={false} attribution="&copy; FAO SoilFER" />
+        <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
+        <MapClickHandler />
+        {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
+        <SyncedMap center={mapCenter} zoom={12} />
+      </MapContainer>
+    )}
+
+    {backgroundLayer === 'Satellite' && (
+      <MapContainer center={mapCenter} zoom={zoomLevel - 1} attributionControl={false}
+        style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
+        <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="Tiles &copy; Esri" />
+        <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
+        <MapClickHandler />
+        {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
+        <SyncedMap center={mapCenter} zoom={zoomLevel - 1} />
+      </MapContainer>
+    )}</>
+
   return (
     <div style={{ /*position: 'fixed', top: '60px', inset: 0,*/height: 'auto', zIndex: theme.zIndex.map }}>
-      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} doubleClickZoom={false} attributionControl={false} style={{ height: 'calc(100vh - 110px)', width: '100%'  }}>
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-        <MapClickHandler />
-        {positionnew
-          ? <LocationMarker />
-          : <FlyTo position={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} trigger={null} />
-        }
-
+      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} doubleClickZoom={false} attributionControl={false} style={{ height: 'calc(100vh - 110px)', width: '100%' }}>
+        <TileLayer  url={`https://api.maptiler.com/maps/019f0317-b046-74ed-9e5c-200a9e03bd7a/{z}/{x}/{y}.png?key=${process.env.REACT_APP_MAP_KEY}`} attribution="" />
+        
         <WMSTileLayer
           url="https://data.apps.fao.org/map/gsrv/gsrv1/boundaries/wms?service=WMS"
           layers="bndl"
@@ -192,6 +232,24 @@ export const MapView: React.FC = () => {
           transparent={true}
           attribution=''
         />
+
+        <WMSTileLayer
+          url="https://data.apps.fao.org/map/gsrv/gsrv1/boundaries/wms/v2"
+          layers="cen_uncountries"
+          format="image/png"
+          transparent={true}
+          attribution=''
+        />
+
+        <MapClickHandler />
+        {positionnew
+          ? <LocationMarker />
+          : <FlyTo position={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} trigger={null} />
+        }
+
+        {/* {mapContainers} */}
+
+
       </MapContainer>
 
       {showCropLayer && (
@@ -274,49 +332,6 @@ export const MapView: React.FC = () => {
               </div>
             )}
           </div>
-
-          {backgroundLayer === 'OpenStreetMap' && (
-            <MapContainer center={mapCenter} zoom={zoomLevel - 1} attributionControl={false}
-              style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-              <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
-              <MapClickHandler />
-              {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
-              <SyncedMap center={mapCenter} zoom={zoomLevel - 1} />
-            </MapContainer>
-          )}
-
-          {backgroundLayer === 'Crop Statistics' && (
-            <MapContainer center={mapCenter} zoom={9} crs={L.CRS.EPSG4326} attributionControl={false}
-              style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
-              <WmsImageLayer url={gaulStatsWMS} layers="gaul:gaul2_stats" viewparams={gaulStatsViewparams} />
-              <MapClickHandler />
-              {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
-              <SyncedMap center={mapCenter} zoom={9} />
-            </MapContainer>
-          )}
-
-          {backgroundLayer === 'Crop Suitability' && (
-            <MapContainer center={mapCenter} zoom={12} crs={L.CRS.EPSG4326} attributionControl={false}
-              style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
-              <TileLayer url={SoilFERWMTS} tms={false} attribution="&copy; FAO SoilFER" />
-              <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
-              <MapClickHandler />
-              {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
-              <SyncedMap center={mapCenter} zoom={12} />
-            </MapContainer>
-          )}
-
-          {backgroundLayer === 'Satellite' && (
-            <MapContainer center={mapCenter} zoom={zoomLevel - 1} attributionControl={false}
-              style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }} doubleClickZoom={false}>
-              <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="Tiles &copy; Esri" />
-              <WMSTileLayer url={adminBoundariesWMS} layers="bndl" format="image/png" transparent={true} attribution="UN Clear Map" />
-              <MapClickHandler />
-              {positionnew && <Marker position={[positionnew.lat, positionnew.lng]} />}
-              <SyncedMap center={mapCenter} zoom={zoomLevel - 1} />
-            </MapContainer>
-          )}
         </>
       )}
     </div>
