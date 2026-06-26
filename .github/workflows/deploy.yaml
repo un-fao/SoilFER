@@ -39,7 +39,7 @@ jobs:
       - name: Build
         run: |
           cd crop-suitability-app
-          echo "REACT_APP_MAP_KEY=${{ vars.MAPTILER_KEY }}" > .env
+          echo "REACT_APP_MAP_KEY=${{ secrets.MAPTILER_KEY }}" > .env
           npm install
           CI=false npm run build
           ls -lart
