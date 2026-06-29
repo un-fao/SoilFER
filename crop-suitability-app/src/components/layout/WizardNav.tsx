@@ -63,6 +63,7 @@ const TechnicalDocumentationLink = styled.a`
   box-shadow: ${theme.shadows.button};
   text-decoration: none;
   transition: all 0.3s ease;
+  white-space: nowrap;
   &:hover:not(:disabled) { background-color: #222 }
 `;
 

@@ -14,11 +14,12 @@ on:
   push:
     branches:
       - review
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    environment: review
+    environment: ${{ github.event.inputs.environment || github.ref_name }}
     permissions:
       id-token: write
       contents: read
