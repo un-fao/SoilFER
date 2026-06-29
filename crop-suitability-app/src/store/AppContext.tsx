@@ -88,6 +88,7 @@ function reducer(state: AppState, action: Action): AppState {
         locationConfirmed: true,
         activePanel: 'Soil',
         HWSDStatistics: null,
+        soil: '', soilCode: '', soilName: '', crop: '', cropCode: '', irrigation: '', waterCode: '', input: '', inputCode: '', cropLayerVisible: false
       };
     case 'CONFIRM_LOCATION':
       return { ...state, locationConfirmed: true };
