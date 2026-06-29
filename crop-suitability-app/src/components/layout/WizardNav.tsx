@@ -27,6 +27,7 @@ const NavPanel = styled.div`
     background: rgba(200, 174, 141, 0.97);
     border-top: 2px solid ${theme.colors.primaryDark};
     border-radius: 0;
+    white-space: nowrap;
     padding: 4px 8px;
     z-index: ${theme.zIndex.nav + 1};
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
@@ -34,7 +35,7 @@ const NavPanel = styled.div`
 `;
 
 const NavButton = styled.button<{ $active: boolean; $done: boolean }>`
-  background-color: ${(p) => p.$active ? '#fbb615' : p.$done ? '#c8ae8d' : 'rgb(185, 185, 185)'};
+  background-color: ${(p) => p.$active ? '#fbb615' : p.$done ? '#c8ae8d' : 'rgb(235, 235, 235)'};
   color: ${(p) => (p.$active || p.$done ? '#6e431d' : '#6e431d')};
   font-weight: bold;
   border: 1px solid #6e431d;
@@ -45,11 +46,27 @@ const NavButton = styled.button<{ $active: boolean; $done: boolean }>`
   transition: all 0.3s ease;
   font-size: ${theme.typography.fontSizeSm};
   box-shadow: ${theme.shadows.button};
-  filter: ${(p) => (p.disabled ? 'grayscale(1)' : 'none')};
+  filter: ${(p) => (p.disabled ? 'grayscale(1) contrast(0.5)' : 'none')};
   &:hover:not(:disabled) { background-color: orange; color: #fff; }
 `;
 
-const TABS: ActivePanel[] = ['Soil', 'Crop', 'Irrigation & Farm Management', 'Results & Report', 'Technical Documentation'];
+const TechnicalDocumentationLink = styled.a`
+  background-color: #444;
+  color: #fff;
+  padding: 6px;
+  font-weight: bold;
+  border: 1px solid #444;
+  margin: 0 3px;
+  border-radius: ${theme.borderRadius.sm};
+  transition: all 0.3s ease;
+  font-size: ${theme.typography.fontSizeSm};
+  box-shadow: ${theme.shadows.button};
+  text-decoration: none;
+  transition: all 0.3s ease;
+  &:hover:not(:disabled) { background-color: #222 }
+`;
+
+const TABS: ActivePanel[] = ['Soil', 'Crop', 'Irrigation & Farm Management', 'Results & Report'];
 
 export const WizardNav: React.FC = () => {
   const { t } = useTranslation();
@@ -68,7 +85,6 @@ export const WizardNav: React.FC = () => {
       case 'Crop':                      return soilDone;
       case 'Irrigation & Farm Management': return cropDone;
       case 'Results & Report':          return allDone;
-      case 'Technical Documentation':   return true;
       default:                          return false;
     }
   };
@@ -79,7 +95,6 @@ export const WizardNav: React.FC = () => {
       case 'Crop':                      return cropDone;
       case 'Irrigation & Farm Management': return mgmtDone;
       case 'Results & Report':          return allDone;
-      case 'Technical Documentation':   return false;
       default:                          return false;
     }
   };
@@ -101,9 +116,18 @@ export const WizardNav: React.FC = () => {
             disabled={!isEnabled(tab)}
             onClick={() => dispatch({ type: 'SET_ACTIVE_PANEL', payload: tab })}
           >
-            <img src={`${process.env.PUBLIC_URL}/images/${tab}Button.png`} alt={tab as string} style={{ height: '25px' }} />
+            <img src={`${process.env.PUBLIC_URL}/images/${tab}Button.png`} alt={tab as string} style={{ height: '25px', verticalAlign: 'middle' }} />
           </NavButton>
         ))}
+
+        <TechnicalDocumentationLink
+          href="https://openknowledge.fao.org/items/3a59c618-8f32-4724-b536-633a9cecd743"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Technical Documentation ↗
+        </TechnicalDocumentationLink>
+
         <LanguageSelector />
       </NavPanel>
     </>

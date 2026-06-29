@@ -252,7 +252,7 @@ export const MapView: React.FC = () => {
 
       </MapContainer>
 
-      {showCropLayer && (
+      {false && (
         <>
           <div style={{ position: 'absolute', ...(isSmallScreen ? { top: '100px' } : { bottom: '60px' }), left: '10px', zIndex: 999, borderRadius: '10px', border: 'solid 1px #999', background: '#f1f1f1', width: 'fit-content' }}>
             <button
