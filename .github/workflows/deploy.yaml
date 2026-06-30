@@ -41,6 +41,7 @@ jobs:
         run: |
           cd crop-suitability-app
           echo "REACT_APP_MAP_KEY=${{ secrets.MAPTILER_KEY }}" > .env
+          echo "PUBLIC_URL=${{ vars.PUBLIC_URL }}" >> .env
           npm install
           CI=false npm run build
           ls -lart
